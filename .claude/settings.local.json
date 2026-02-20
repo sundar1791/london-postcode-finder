@@ -3,7 +3,14 @@
     "allow": [
       "Bash(pip install:*)",
       "Bash(python -m pytest:*)",
-      "Bash(git -C /Users/sundarsubramanian/Workspace/london-postcode-finder init)"
+      "Bash(git -C /Users/sundarsubramanian/Workspace/london-postcode-finder init)",
+      "Bash(chmod:*)",
+      "Bash(gh issue list:*)",
+      "Bash(while read url)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(gh project item-add:*)",
+      "Bash(done)"
     ]
   }
 }
