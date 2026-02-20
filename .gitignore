@@ -1,0 +1,25 @@
+# Nimbalyst local plans (not checked into version control)
+nimbalyst-local/
+
+# Environment & secrets
+.env
+api_keys.md
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+
+# Test cache
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Node / Next.js
+node_modules/
+.vercel
+
+# Data files (download locally, never commit)
+/data/*.csv

@@ -1,0 +1,10 @@
+langgraph
+anthropic
+httpx
+fastapi
+uvicorn
+python-dotenv
+supabase
+pandas
+pytest
+pytest-asyncio
