@@ -220,7 +220,7 @@ The `/supabase/migrations/` folder is the complete, reproducible history of your
 
 1. **Supabase is the single source of truth for data.** Adding new features means adding migrations, not rearchitecting.
 2. **Each sub-agent is one file.** Adding a new scoring dimension = one new file + one graph node change.
-3. **Prompts live in ****`/prompts/*.md`****.** Improving Claude's behaviour doesn't touch production code.
+3. **Prompts live in \****\`/prompts/*.md`**\*\*.** Improving Claude's behaviour doesn't touch production code.
 4. **Environment variables are the only difference between local and production.** `supabase start` + `vercel dev` mirrors prod exactly.
 5. **Every infrastructure change goes through CLI.** No dashboard clicks = reproducible, version-controlled infra.
 
