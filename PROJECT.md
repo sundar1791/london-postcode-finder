@@ -2,52 +2,94 @@
 
 ## What We're Building
 
-A web app that helps people new to London figure out where to live. Users are given 100 tokens to distribute across 5 lifestyle dimensions. A multi-agent system scores every London postcode district against those dimensions using free public APIs, then Claude synthesises the results into 5 personalised recommendations with rationale.
+A web app that helps people new to London figure out where to live. Users are given 100 tokens to distribute across 5 lifestyle dimensions, and can optionally add a short natural language context (up to 500 characters) to personalise their search further — for example, "I'm a mother of two and need access to a nursery." A multi-agent system scores every London postcode district against those dimensions using free public APIs, with the orchestrator interpreting any natural language context and spawning additional agents or adjusting weights accordingly. Claude synthesises all results into 5 personalised recommendations with rationale.
 
-Users can try different token allocations and compare results over time. No login required in V1.
+Users can try different token allocations and contexts. A Redo button lets them iterate from their last query; Start New resets everything. Past searches are saved to the database for developer inspection but not shown in the UI until V2 (when auth is added). No login required in V1.
+
+The agent system gets smarter over time — every query appends a structured learning to a knowledge base that the orchestrator and synthesizer read at the start of each subsequent query.
 
 ---
 
 ## The Agent Architecture
 
 ```
-User submits token allocation (100 tokens across 5 dimensions)
+User submits token allocation (100 tokens) + optional context text (≤500 chars)
+              ↓
+    [Knowledge Loader] — NEW
+    Fetches last 100 learnings from Supabase learnings table
+    Compiles into markdown string, injects into graph state
               ↓
     [Orchestrator Agent — Claude Sonnet]
-    Validates tokens, normalises weights, dispatches sub-agents
+    Reads knowledge base + current input
+    1. Validates tokens sum to 100
+    2. Reads context text and classifies it:
+       - Irrelevant / nonsensical → ignore, run standard pipeline
+       - Weight hint (e.g. "love parks") → silently adjust token weights
+       - New dimension (e.g. "need a nursery") → spawn Context Sub-Agent
               ↓
-    ┌─────────────────────────────────────────┐
-    │  5 Sub-Agents run in PARALLEL           │
-    │                                         │
-    │  Crime Agent      → UK Police API       │
-    │  Green Agent      → Overpass (OSM)      │
-    │  Nightlife Agent  → Overpass (OSM)      │
-    │  Transport Agent  → TfL API             │
-    │  Rent Agent       → ONS CSV lookup      │
-    └─────────────────────────────────────────┘
+    ┌──────────────────────────────────────────────────┐
+    │  5 Core Sub-Agents always run in PARALLEL        │
+    │                                                  │
+    │  Crime Agent      → UK Police API                │
+    │  Green Agent      → Overpass (OSM)               │
+    │  Nightlife Agent  → Overpass (OSM)               │
+    │  Transport Agent  → TfL API                      │
+    │  Rent Agent       → ONS CSV lookup               │
+    │                                                  │
+    │  + Context Sub-Agent (spawned only when needed)  │
+    │    → Overpass query (nurseries, schools, etc.)   │
+    │    → Web search fallback (community, culture)    │
+    └──────────────────────────────────────────────────┘
               ↓
     Each agent returns: {postcode, raw_value, normalised_score}
               ↓
     [Synthesizer Agent — Claude Sonnet]
-    Weights scores by token allocation, ranks all postcodes,
-    picks top 5, writes human rationale for each
+    Reads knowledge base + all scores + context
+    Weights scores, picks top 5, writes rationale
               ↓
-    Results saved to Supabase (Postgres)
+    [Knowledge Writer] — NEW
+    Extracts learnings from this query:
+    - What context intent was classified as
+    - What methodology / Overpass query was used
+    - What token weight adjustments were made
+    Appends structured rows to learnings table in Supabase
+              ↓
+    Results + search saved to Supabase
     Response streamed to Next.js frontend
 ```
 
-**Claude API is used exactly twice per search:**
-- Orchestrator call: ~200 tokens in, ~100 out (tiny, cheap)
-- Synthesizer call: ~2,000 tokens in, ~800 out (~$0.04 per search)
+**Claude API usage per search:**
+- Orchestrator call: ~600 tokens in (includes knowledge), ~150 out
+- Context Sub-Agent call: ~300 tokens in, ~100 out — only when needed
+- Synthesizer call: ~3,000 tokens in (includes knowledge), ~900 out — ~$0.06 per search
 
-Everything between those two calls is pure Python — zero LLM cost.
+Standard searches without context remain at ~$0.05. Every call slightly increases as the knowledge base grows — this is intentional and the value compounds. Knowledge is capped at last 100 entries to control token growth.
+
+### The Orchestrator's Context Classification Logic
+
+This is the most important new piece of reasoning in the system. The orchestrator receives the context text and makes one of three decisions:
+
+**Ignore** — context is nonsensical, offensive, or completely unrelated to London living (e.g. "I like pizza"). Pipeline runs as normal with the original token weights.
+
+**Weight adjustment** — context maps to an existing dimension and should shift the token weights silently. The orchestrator recalculates weights before dispatching.
+- "I'm terrified of crime" → boost safety tokens
+- "I need to be outdoors" → boost green space tokens
+- "I'm on a very tight budget" → boost rent tokens
+
+**Spawn Context Sub-Agent** — context requires data that no existing agent covers. The orchestrator extracts the core intent and passes it as a structured query.
+- "I need a nursery nearby" → Overpass query: `amenity=kindergarten` within 500m
+- "I want to be near a mosque" → Overpass query: `amenity=place_of_worship + religion=muslim`
+- "I need good schools" → Overpass query: `amenity=school` within 1km
+- "I want a strong Tamil community" → Web search fallback
+
+The Context Sub-Agent returns scores in the same `{postcode, normalised_score}` format as every other agent, so the Synthesizer needs no special handling.
 
 ---
 
 ## The 5 Scoring Dimensions
 
 | Dimension | API | Cost |
-| --- | --- | --- |
+|---|---|---|
 | Safety | UK Police API (data.police.uk) | Free, no key |
 | Green Space | Overpass API (OpenStreetMap) | Free, no key |
 | Nightlife | Overpass API (OpenStreetMap) | Free, no key |
@@ -57,10 +99,172 @@ Everything between those two calls is pure Python — zero LLM cost.
 
 ---
 
+## The LangGraph State Object
+
+```python
+class LondonSearchState(TypedDict):
+    # Input
+    token_allocation: dict      # {safety: 40, green: 20, ...} — original from user
+    context_text: str           # raw user input (≤500 chars, empty string if none)
+    session_id: str             # browser-generated UUID
+
+    # Knowledge base (loaded first by Knowledge Loader, read by orchestrator + synthesizer)
+    knowledge_base: str         # compiled markdown: distilled_brain + last 10 raw learnings
+
+    # Orchestrator output
+    adjusted_allocation: dict   # token weights after context adjustment
+    context_analysis: dict      # {relevant: bool, type: "ignore"|"weight"|"spawn",
+                                #  intent: str, overpass_query: str|None}
+
+    # Sub-agent output
+    postcode_scores: dict       # raw scores per postcode per dimension
+    weighted_scores: dict       # after applying adjusted allocation
+
+    # Synthesizer output
+    top_5: list                 # final ranked postcodes with rationale
+
+    # Knowledge writer input (populated by synthesizer, saved last)
+    new_learnings: list         # structured entries to append to learnings table
+                                # each entry: {category, context_intent, methodology,
+                                #              token_pattern, outcome_summary}
+```
+
+
+
+---
+
+## The Knowledge Base Design
+
+The knowledge base is the mechanism by which the agents get smarter over time. It lives in Supabase — not a flat file — so it's queryable, appendable without race conditions, and exportable on demand as `knowledge.md`.
+
+**Why not a file?** Vercel serverless functions are stateless — they can't write to disk between requests. A file in the repo would require a commit per query. Concurrent writes to a blob file cause silent data loss. A Supabase table solves all three problems.
+
+### The Memory Model — Inspired by How LLMs Handle Long Conversations
+
+Claude and Gemini don't have persistent memory — they have a context window. Every message re-sends the full conversation history until it gets too long, at which point older content gets compressed into summaries while recent messages stay verbatim. The model always has: a compressed representation of old history + the full detail of recent events. This layered approach is the right answer to the same problem your system faces: how do you give an agent the benefit of accumulated experience without blowing the context window?
+
+Your system uses the same pattern:
+
+```
+Distilled brain  ←→  Compressed old history  (stable heuristics, always injected)
+Last 10 raw entries  ←→  Recent verbatim messages  (specific, recent, high-recency value)
+```
+
+### Three Types of Knowledge — Different Shapes, Different Needs
+
+**Methodological knowledge** — how to handle classes of request. "When a user asks about nurseries, use Overpass `amenity=kindergarten` within 500m." Grows slowly, highly compressible into rules.
+
+**Domain knowledge** — facts about London. "SW postcodes consistently score poorly on rent. E1 scores high on nightlife but low on green space." Moderately stable, compressible into heuristics.
+
+**Pattern knowledge** — user archetypes. "Users allocating >50 tokens to safety often implicitly care about schools even when they don't mention it." Emerges over time, becomes most valuable after hundreds of queries.
+
+All three types accumulate in the raw learnings table and get distilled into the brain. This is intentional — the distillation process is where the agent turns experience into wisdom.
+
+### Schema — Designed for Distillation
+
+```sql
+learnings table
+─────────────────────────────────────────────────────
+id               uuid, primary key
+category         text  — 'context_methodology' | 'token_pattern' | 'synthesizer_insight'
+context_intent   text  — full sentence: what the user wanted
+methodology      text  — full sentence: exactly what the agent did and why
+token_pattern    text  — full sentence: what the token allocation implied about the user
+outcome_summary  text  — full sentence: top result and why it scored well
+created_at       timestamptz
+
+agent_config table  (single row, always exists)
+─────────────────────────────────────────────────────
+id               integer, always 1
+distilled_brain  text  — compressed markdown of all accumulated heuristics
+last_distilled   timestamptz  — when the brain was last rewritten
+query_count      integer  — total queries run, used to trigger distillation
+```
+
+**Critical writing discipline for all learnings text columns:** Every entry must be a complete, meaningful sentence — not shorthand. The distillation process reads these entries and uses them to write rules. Bad input produces bad rules.
+
+```
+❌ Bad:  "Overpass: amenity=kindergarten r=500m"
+✅ Good: "User wanted nurseries within walking distance — queried Overpass for
+         amenity=kindergarten within 500 metres of each postcode centroid,
+         returned a normalised count score across all 40 districts."
+```
+
+The synthesizer prompt (US-016) must enforce this writing discipline when it populates `new_learnings`.
+
+### How the Layered Memory System Works
+
+```
+Query starts
+      ↓
+[Knowledge Loader]
+  → Read distilled_brain from agent_config (always — compressed heuristics)
+  → Read last 10 rows from learnings ORDER BY created_at DESC (recent specifics)
+  → Combine into knowledge_base markdown string, inject into state
+      ↓
+[Orchestrator] reads knowledge_base as system context
+      ↓
+[Sub-agents run in parallel]
+      ↓
+[Synthesizer] reads knowledge_base as system context
+  → Writes top 5 recommendations
+  → Populates new_learnings list in state
+      ↓
+[Knowledge Writer]
+  → Inserts new_learnings rows into learnings table
+  → Increments query_count in agent_config
+  → If query_count % 50 == 0: trigger distillation
+      ↓
+[Distillation — every 50 queries]
+  → Claude reads ALL raw learnings rows
+  → Rewrites distilled_brain as compressed markdown (~500 words of heuristics and rules)
+  → Updates agent_config.distilled_brain and agent_config.last_distilled
+      ↓
+Next query starts with a smarter brain
+```
+
+### The Distillation Process in Detail
+
+Distillation is a Claude call that runs asynchronously after every 50th query (not in the critical path — it doesn't block the user). It reads all raw learnings and produces a compressed brain with this structure:
+
+```markdown
+## Methodological Rules
+- For nursery/childcare requests: Overpass amenity=kindergarten within 500m. Confirmed 12 times.
+- For religious institution requests: Overpass amenity=place_of_worship + religion filter. 8 times.
+- For "good schools" requests: Overpass amenity=school within 1km, weight by count. 6 times.
+
+## London Domain Knowledge
+- SW postcodes (SW1-SW20): strong on safety and green space, consistently poor on rent.
+- E1/E2/E3: high nightlife, low green space, improving on rent.
+- SE22/SE21: strong family profile — green space, safety, school proximity.
+
+## User Archetypes
+- High safety (>40 tokens): often implicitly values schools. Consider boosting if children mentioned.
+- High nightlife (>40 tokens): correlates with younger users, less concerned with transport reliability.
+- Balanced allocation (15-25 per dimension): hardest to synthesise, needs strongest contextual rationale.
+
+## Synthesizer Insights
+- Postcodes that score well across 4+ dimensions make stronger recommendations than those
+  excelling in 1-2 with weaknesses elsewhere — users respond better to balanced profiles.
+```
+
+This is your portable knowledge artifact. The `/knowledge/export` endpoint returns this brain plus all raw entries as a formatted `knowledge.md` file, reusable in future projects as a starting-point system prompt.
+
+### Why Not RAG?
+
+RAG (vector similarity search) is the right answer when the knowledge base is large and heterogeneous — thousands of entries across many diverse domains where only a small subset is relevant to any given query. Your domain is deliberately narrow: London postcodes, ~20-30 distinct context intent types, fixed scoring dimensions. After 1,000 queries, you'll have deep repeated coverage of a small number of patterns — exactly the scenario where distillation produces denser, more useful heuristics than retrieval would. The distilled brain gets *smarter*, not just longer. RAG would give you a more sophisticated way to retrieve mediocre raw entries; distillation gives you genuinely compressed wisdom. RAG remains a valid upgrade path if this framework is later applied to a much broader domain.
+
+### Exporting as knowledge.md
+
+The `/knowledge/export` endpoint compiles the distilled brain plus all raw entries into a clean, formatted markdown file. This is your portable knowledge asset — the accumulated intelligence of every query the system has run, structured for reuse in future projects.
+
+---
+
+
 ## Tech Stack
 
 | Layer | Tool | Why |
-| --- | --- | --- |
+|---|---|---|
 | Agent orchestration | LangGraph | Parallel node execution, shared state |
 | LLM | Claude API (Sonnet) | Orchestrator + Synthesizer only |
 | Sub-agents | Pure Python + httpx | No LLM needed for API calls |
@@ -95,8 +299,10 @@ main          ← production, always deployable, never commit directly
 # Morning: pick your story
 gh issue view 7
 
-# Create feature branch from dev
-git checkout dev && git pull origin dev
+# ALWAYS start a feature branch from dev, never from main
+# ALWAYS pull first to get the latest integrated work
+git checkout dev
+git pull origin dev
 git checkout -b feature/US-007-crime-scorer
 
 # Build using Claude Code
@@ -106,7 +312,7 @@ claude
 git add .
 git commit -m "feat: crime scorer with Police API normalised output (closes #7)"
 
-# Push and open PR via CLI
+# Push and open PR via CLI — always targeting dev, never main
 git push origin feature/US-007-crime-scorer
 gh pr create --base dev --title "US-007: Crime scorer" --body "Closes #7"
 
@@ -144,17 +350,17 @@ The `/supabase/migrations/` folder is the complete, reproducible history of your
 *Goal: Repo, tooling, and infra set up. Nothing works yet but everything is wired.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
-| US-001 | Project scaffold — folder structure, requirements, config | Claude Code |
-| US-002 | GitHub repo, branch strategy, project board, all issues created | Manual + CLI |
-| US-003 | Supabase local setup, initial schema migration | CLI + Claude Code |
+|---|---|---|
+| US-001 | Project scaffold — folder structure, requirements, config | Claude Code ✅ |
+| US-002 | GitHub repo, branch strategy, project board, all issues created | Manual + CLI ✅ |
+| US-003 | Supabase local setup — searches table + learnings table + agent_config table migrations | CLI + Claude Code |
 | US-004 | Vercel project init, environment variable structure | CLI |
 
 ### Milestone 1 — Data Foundation
 *Goal: All 5 scorers work independently. No agents, no Claude. Just verified data pipelines.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
+|---|---|---|
 | US-005 | Postcode utility — postcodes.io, validate and get lat/lng | Claude Code |
 | US-006 | ONS rent CSV — download, load into Supabase via migration | Claude Code |
 | US-007 | Crime scorer — Police API, normalised score per postcode | Claude Code |
@@ -165,54 +371,69 @@ The `/supabase/migrations/` folder is the complete, reproducible history of your
 | US-012 | Integration test — all 5 scorers against 5 real postcodes | Claude Code |
 
 ### Milestone 2 — Agent Orchestration
-*Goal: LangGraph pipeline works end-to-end in terminal. Claude is in the loop.*
+*Goal: LangGraph pipeline works end-to-end in terminal. Claude is in the loop. Knowledge base is live.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
-| US-013 | LangGraph state definition and graph scaffold | Claude Code |
-| US-014 | Parallel execution — all 5 scorers run simultaneously | Claude Code |
-| US-015 | Orchestrator prompt design and Claude call | Manual + Claude Code |
-| US-016 | Synthesizer prompt design and Claude call | Manual + Claude Code |
-| US-017 | End-to-end pipeline test — token input → top 5 in terminal | Claude Code |
+|---|---|---|
+| US-013 | LangGraph state definition — full TypedDict including knowledge and learnings fields | Claude Code |
+| US-014 | Parallel execution — all 5 scorers run simultaneously as graph nodes | Claude Code |
+| US-015 | Orchestrator prompt — validates tokens, reads knowledge, classifies context | Manual + Claude Code |
+| US-016 | Synthesizer prompt — reads knowledge, writes rationale + populates new_learnings | Manual + Claude Code |
+| US-017 | End-to-end pipeline test — token input + context → top 5 in terminal | Claude Code |
+| US-033 | Context Sub-Agent — Overpass or web search, spawned dynamically by orchestrator | Claude Code |
+| US-034 | Knowledge Loader — reads distilled_brain from agent_config + last 10 raw learnings, compiles into knowledge_base markdown string injected into state | Claude Code |
+| US-035 | Knowledge Writer — inserts new_learnings rows, increments query_count in agent_config, triggers distillation when query_count % 50 == 0 | Claude Code |
 
 ### Milestone 3 — API Layer
 *Goal: Pipeline accessible via HTTP with streaming.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
+|---|---|---|
 | US-018 | FastAPI app scaffold, health check endpoint | Claude Code |
-| US-019 | Search endpoint — accepts tokens, returns streaming response | Claude Code |
-| US-020 | Supabase save — every search persisted with session UUID | Claude Code |
-| US-021 | History endpoint — retrieve past searches by session UUID | Claude Code |
+| US-019 | Search endpoint — accepts tokens + context_text, returns streaming response | Claude Code |
+| US-020 | Supabase save — persists tokens, context_text, and results with session UUID | Claude Code |
+| US-021 | Knowledge export endpoint — GET /knowledge/export returns knowledge.md file | Claude Code |
 
 ### Milestone 4 — Frontend
 *Goal: A real browser UI. No terminal required.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
+|---|---|---|
 | US-022 | Next.js scaffold with Vercel AI SDK, deploy shell to Vercel | Claude Code |
-| US-023 | Token allocation UI — sliders enforcing 100 token total | Claude Code |
+| US-023 | Token allocation UI — sliders enforcing 100 total + context textarea + 500 char counter | Claude Code |
 | US-024 | Streaming results UI — postcodes appear as Claude writes | Claude Code |
-| US-025 | History UI — past searches by session UUID | Claude Code |
-| US-026 | Polish and mobile responsiveness | Claude Code |
+| US-025 | Redo button — repopulates last token allocation, clears context box | Claude Code |
+| US-026 | Start New button — resets all sliders to 0, clears context box and results | Claude Code |
+| US-027 | Polish and mobile responsiveness | Claude Code |
 
 ### Milestone 5 — V1 Production Release
 *Goal: Live, shareable, stable.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
-| US-027 | Dev → main merge, production deployment | CLI |
-| US-028 | Error handling — invalid tokens, API failures, timeouts | Claude Code |
-| US-029 | Public README and demo documentation | Manual |
+|---|---|---|
+| US-028 | Dev → main merge, production deployment | CLI |
+| US-029 | Error handling — invalid tokens, irrelevant context, API failures, timeouts | Claude Code |
+| US-030 | Public README and demo documentation | Manual |
 
-### Milestone 6 — V2: Auth and User Accounts
-*Goal: Users log in, own their searches, compare across sessions.*
+### Milestone 6 — V2: Auth, History, and User Accounts
+*Goal: Users log in, own their searches, view history, compare across sessions.*
 
 | Issue | User Story | Notes |
-| --- | --- | --- |
-| US-030 | Supabase Auth — email + Google OAuth via CLI | CLI + Claude Code |
-| US-031 | Schema migration — replace session UUID with user ID | Claude Code |
-| US-032 | Frontend auth flow — login, logout, protected history | Claude Code |
+|---|---|---|
+| US-031 | Supabase Auth — email + Google OAuth via CLI | CLI + Claude Code |
+| US-032 | Schema migration — replace session UUID with user ID in searches table | Claude Code |
+| US-036 | History endpoint — retrieve past searches by user ID | Claude Code |
+| US-037 | History UI — display past searches per logged-in user | Claude Code |
+| US-038 | Frontend auth flow — login, logout, protected history | Claude Code |
+
+### Milestone 7 — V3: Distillation Engine
+*Goal: Knowledge Writer triggers automatic distillation every 50 queries. Claude reads all raw learnings and rewrites the distilled_brain as compressed heuristics. Agents get genuinely smarter rather than just accumulating longer context.*
+
+| Issue | User Story | Notes |
+|---|---|---|
+| US-039 | Distillation prompt — Claude reads all learnings rows and writes compressed brain as structured markdown covering methodological rules, London domain knowledge, and user archetypes | Manual + Claude Code |
+| US-040 | Distillation trigger — async job called by Knowledge Writer every 50 queries, updates agent_config.distilled_brain and last_distilled | Claude Code |
+| US-041 | Distillation quality test — compare orchestrator decisions before and after distillation against a fixed set of test queries, assert improvement | Claude Code |
 
 ---
 
@@ -220,9 +441,12 @@ The `/supabase/migrations/` folder is the complete, reproducible history of your
 
 1. **Supabase is the single source of truth for data.** Adding new features means adding migrations, not rearchitecting.
 2. **Each sub-agent is one file.** Adding a new scoring dimension = one new file + one graph node change.
-3. **Prompts live in \****\`/prompts/*.md`**\*\*.** Improving Claude's behaviour doesn't touch production code.
-4. **Environment variables are the only difference between local and production.** `supabase start` + `vercel dev` mirrors prod exactly.
-5. **Every infrastructure change goes through CLI.** No dashboard clicks = reproducible, version-controlled infra.
+3. **The Context Sub-Agent is a template.** Any new Overpass query type the orchestrator learns to classify requires no architecture change — just a new query pattern added to the knowledge base.
+4. **The knowledge base is portable.** The `/knowledge/export` endpoint produces a standalone `knowledge.md` file reusable in future projects with zero modification.
+5. **History is gated behind auth.** Data is always saved; it's only surfaced in the UI once users have accounts. This keeps V1 simple without losing any data.
+6. **Prompts live in `/prompts/*.md`.** Improving orchestration logic or synthesis quality doesn't touch production code.
+7. **Environment variables are the only difference between local and production.** `supabase start` + `vercel dev` mirrors prod exactly.
+8. **Every infrastructure change goes through CLI.** No dashboard clicks = reproducible, version-controlled infra.
 
 ---
 ---
@@ -267,7 +491,7 @@ vercel --version
 Takes 10 minutes. Painful to do mid-build.
 
 | Service | Where | What you need |
-| --- | --- | --- |
+|---|---|---|
 | Anthropic | console.anthropic.com | API Key |
 | TfL | api.tfl.gov.uk → Register | App Key |
 | Supabase | supabase.com → New Project | Project URL + anon public key |
@@ -451,12 +675,12 @@ gh project create --owner "@me" --title "London Postcode Finder"
 
 Note the project number from the output (e.g., Project #1). You'll use it next.
 
-### Step 5 — Create all 32 issues via CLI
+### Step 5 — Create all 33 issues via CLI
 
 This is the Claude Code step for US-002. Open Claude Code and paste:
 
 ```
-I need to create 32 GitHub issues for my project using the GitHub CLI.
+I need to create 33 GitHub issues for my project using the GitHub CLI.
 The repo is $GITHUB_USER/london-postcode-finder.
 (Run: export GITHUB_USER=$(gh api user --jq '.login') before this script if not already set)
 
@@ -504,18 +728,21 @@ Ask Claude Code to write a small bash script that adds all open issues to your p
 
 ### Step 7 — Your first PR
 
-Now we do the PR ritual properly for the first time — so you know the pattern for every day from here.
+Day 1 is a one-time exception to the normal flow. Because we built the scaffold
+directly on main before the branch strategy existed, we skip the feature branch
+step and PR dev directly into main to establish the baseline.
+
+From Day 2 onwards, you never do this — all PRs go feature → dev, and
+only dev → main for production releases.
 
 ```bash
-# You're currently on dev branch with the scaffold committed
-# Create a feature branch for US-001 retroactively
-git checkout main
-git checkout -b feature/US-001-US-002-foundation
-
-# Cherry-pick or the scaffold is already here since we built on main initially
-# Simpler: just ensure dev has the scaffold, then PR dev into main
-
+# Make sure you're on dev and all changes are committed
 git checkout dev
+git add .
+git commit -m "chore: clean up scaffold, gitignore and env example"
+git push origin dev
+
+# PR dev into main — one-time exception to establish the baseline
 gh pr create \
   --base main \
   --title "Milestone 0: Developer foundation (US-001, US-002)" \
@@ -529,7 +756,7 @@ gh pr merge --squash
 ### Step 8 — Confirm your Day 1 is done
 
 ```bash
-# Should show 32 open issues
+# Should show 33 open issues
 gh issue list --state open | wc -l
 
 # Should show main and dev branches
@@ -560,4 +787,17 @@ If any of those feel unclear, ask before Day 2. Day 2 (US-003: Supabase setup) b
 
 ## Day 2 Preview
 
-US-003 and US-004: get Supabase running locally with Docker, write your first database migration (the `searches` table schema), and initialise Vercel with your project. By the end of Day 2 you'll have a local database that mirrors production exactly — and your first Vercel deployment (a blank page, but a deployed blank page).
+US-003 and US-004: get Supabase running locally with Docker, write your first two database migrations (searches table + learnings table, both RAG-ready schemas), and initialise Vercel with your project. By the end of Day 2 you'll have a local database that mirrors production exactly — and your first Vercel deployment (a blank page, but a deployed blank page).
+
+> **Note on US-003:** Three migrations needed. The searches table includes `context_text TEXT CHECK (char_length(context_text) <= 500)`. The learnings table has all text columns written as full sentences (no shorthand). The agent_config table has a single row with `distilled_brain TEXT` (starts empty) and `query_count INTEGER DEFAULT 0`.
+
+---
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| Day 1 | Initial plan created — 32 user stories across 6 milestones |
+| Day 2 | Added open-ended context text feature: Context Sub-Agent (US-033), updated orchestrator/synthesizer/state/DB/frontend stories. Total 33 user stories |
+| Day 2 | Added knowledge base: learnings table, Knowledge Loader (US-034) + Writer (US-035), /knowledge/export (US-021). Removed history UI from V1 → V2 (US-036, US-037). Added Redo (US-025) + Start New (US-026). Total 38 user stories |
+| Day 2 | Replaced RAG with layered memory + distillation. Knowledge base now: distilled_brain (compressed heuristics, rewritten every 50 queries) + last 10 raw learnings (recency). New agent_config table. Milestone 7 redesigned as distillation engine (US-039–041). Total 41 user stories across 7 milestones |
