@@ -24,3 +24,5 @@ node_modules/
 # Data files (download locally, never commit)
 /data/*.csv
 firebase-debug.log
+.vercel
+.env.local
