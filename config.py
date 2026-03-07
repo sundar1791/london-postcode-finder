@@ -13,7 +13,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # directions and zones. Mix of central (Z1), inner (Z2-3), outer (Z3-6).
 LONDON_POSTCODE_DISTRICTS = [
     # Central – Zone 1
-    "EC1", "WC1", "SW1", "W1",
+    "EC1A", "WC1A", "SW1A", "W1A",
     # Inner North
     "N1", "N4", "NW1", "NW3",
     # Inner East
