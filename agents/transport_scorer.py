@@ -3,21 +3,18 @@ import os
 from typing import Optional
 
 import httpx
-from dotenv import load_dotenv
 
 from tools.postcode import get_all_postcode_coordinates, get_postcode_coordinates
 
-load_dotenv()
-
-TFL_API_KEY: Optional[str] = os.environ.get("TFL_APP_KEY")
-if not TFL_API_KEY:
+TFL_APP_KEY: Optional[str] = os.environ.get("TFL_APP_KEY")
+if not TFL_APP_KEY:
     raise ValueError(
-        "TFL_API_KEY environment variable is not set. "
+        "TFL_APP_KEY environment variable is not set. "
         "Register at api.tfl.gov.uk to obtain a key."
     )
 
 TFL_STOPPOINT_URL = "https://api.tfl.gov.uk/StopPoint"
-_STOP_TYPES = "NaptanMetroStation,NaptanRailStation,NaptanBusCoachStation"
+_STOP_TYPES = "NaptanMetroStation,NaptanRailStation,NaptanBusCoachTstation"
 
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [5, 10, 15]
@@ -31,7 +28,7 @@ async def _fetch_transport_score(
         "lon": lng,
         "stopTypes": _STOP_TYPES,
         "radius": 800,
-        "app_key": TFL_API_KEY,
+        "app_key": TFL_APP_KEY,
     }
 
     for attempt in range(_MAX_RETRIES + 1):
