@@ -10,7 +10,10 @@
       "Bash(do)",
       "Bash(echo:*)",
       "Bash(gh project item-add:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(python:*)"
     ]
   }
 }
