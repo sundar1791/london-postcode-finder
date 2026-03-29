@@ -4,7 +4,15 @@ import httpx
 
 from tools.postcode import get_all_postcode_coordinates, get_postcode_coordinates
 
-OVERPASS_API = "https://overpass-api.de/api/interpreter"
+# Public Overpass instances often return 504 under load; try several mirrors.
+_OVERPASS_ENDPOINTS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",
+)
+
+# Deprecated single URL (kept for any external imports); prefer _OVERPASS_ENDPOINTS.
+OVERPASS_API = _OVERPASS_ENDPOINTS[0]
 
 _OVERPASS_QUERY_TEMPLATE = """
 [out:json];
@@ -26,47 +34,70 @@ out count;
 """
 
 
-_RETRY_STATUSES = {429, 504}
+# 502/503: bad gateway / overloaded; 429/504: rate limit / timeout
+_RETRY_STATUSES = {429, 502, 503, 504}
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [10, 20, 30]
+# Overpass can take a long time when busy; short timeouts cause false failures.
+_OVERPASS_TIMEOUT = 120.0
 
 
 async def _fetch_green_count(
     client: httpx.AsyncClient, district: str, lat: float, lng: float
 ) -> dict:
     query = _OVERPASS_QUERY_TEMPLATE.format(lat=lat, lng=lng)
+    endpoint_errors: list[str] = []
 
-    for attempt in range(_MAX_RETRIES + 1):
-        try:
-            response = await client.post(
-                OVERPASS_API, data={"data": query}, timeout=30.0
-            )
-        except httpx.RequestError as exc:
-            raise RuntimeError(
-                f"Could not reach Overpass API: {exc}"
-            ) from exc
+    for endpoint in _OVERPASS_ENDPOINTS:
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                response = await client.post(
+                    endpoint, data={"data": query}, timeout=_OVERPASS_TIMEOUT
+                )
+            except httpx.RequestError as exc:
+                endpoint_errors.append(f"{endpoint} attempt {attempt}: {exc}")
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                break  # try next mirror
 
-        if response.status_code in _RETRY_STATUSES:
-            if attempt < _MAX_RETRIES:
-                await asyncio.sleep(_RETRY_DELAYS[attempt])
-                continue
-            raise RuntimeError(
-                f"Overpass API is rate limiting or unavailable for district {district} "
-                f"(HTTP {response.status_code}) after {_MAX_RETRIES} retries."
-            )
+            if response.status_code in _RETRY_STATUSES:
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                endpoint_errors.append(
+                    f"{endpoint}: HTTP {response.status_code} after {_MAX_RETRIES} retries"
+                )
+                break  # try next mirror
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        data = response.json()
-        elements = data.get("elements", [])
-        if not elements:
-            return {"district": district, "raw_count": 0}
+            # Overpass sometimes returns HTTP 200 with an HTML/XML error page
+            # (e.g. Dispatcher_Client::protocol_error) instead of JSON.
+            try:
+                data = response.json()
+            except ValueError as exc:
+                snippet = (response.text or "")[:240].replace("\n", " ")
+                endpoint_errors.append(
+                    f"{endpoint}: not valid JSON ({exc!s}); body starts: {snippet!r}"
+                )
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                break  # try next mirror
 
-        count_element = elements[0]
-        total = int(count_element.get("tags", {}).get("total", 0))
-        return {"district": district, "raw_count": total}
+            elements = data.get("elements", [])
+            if not elements:
+                return {"district": district, "raw_count": 0}
 
-    raise RuntimeError(f"Overpass API failed for district {district} after {_MAX_RETRIES} retries.")
+            count_element = elements[0]
+            total = int(count_element.get("tags", {}).get("total", 0))
+            return {"district": district, "raw_count": total}
+
+    raise RuntimeError(
+        f"Overpass API unavailable for district {district} after trying "
+        f"{len(_OVERPASS_ENDPOINTS)} endpoint(s). Details: {'; '.join(endpoint_errors)}"
+    )
 
 
 def _normalise(results: list) -> list:
@@ -104,11 +135,14 @@ async def score_all_postcodes() -> list:
 
     raw_results = []
     async with httpx.AsyncClient() as client:
+        # Small batches + pause between batches reduce 429/504 from public Overpass.
         for i in range(0, len(coordinates), 2):
             batch = coordinates[i : i + 2]
             batch_results = await asyncio.gather(
                 *[
-                    _fetch_green_count(client, coord["outcode"], coord["lat"], coord["lng"])
+                    _fetch_green_count(
+                        client, coord["outcode"], coord["lat"], coord["lng"]
+                    )
                     for coord in batch
                 ]
             )

@@ -14,10 +14,11 @@ if not TFL_APP_KEY:
     )
 
 TFL_STOPPOINT_URL = "https://api.tfl.gov.uk/StopPoint"
-_STOP_TYPES = "NaptanMetroStation,NaptanRailStation,NaptanBusCoachTstation"
+_STOP_TYPES = "NaptanMetroStation,NaptanRailStation,NaptanBusCoachStation"
 
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [5, 10, 15]
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 
 async def _fetch_transport_score(
@@ -39,12 +40,21 @@ async def _fetch_transport_score(
                 f"Could not reach TfL API: {exc}"
             ) from exc
 
-        if response.status_code == 429:
+        if response.status_code in _RETRY_STATUSES:
             if attempt < _MAX_RETRIES:
                 await asyncio.sleep(_RETRY_DELAYS[attempt])
                 continue
             print(
-                f"Warning: TfL API rate limiting for {district} after {_MAX_RETRIES} retries. "
+                f"Warning: TfL API unavailable for {district} after {_MAX_RETRIES} retries "
+                f"(HTTP {response.status_code}). "
+                "Using raw_score 0."
+            )
+            return {"district": district, "raw_score": 0.0}
+
+        if response.status_code == 400:
+            # Invalid query params / temporary API-side validation issues.
+            print(
+                f"Warning: TfL API returned 400 for {district}. "
                 "Using raw_score 0."
             )
             return {"district": district, "raw_score": 0.0}

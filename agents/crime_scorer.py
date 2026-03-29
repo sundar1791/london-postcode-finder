@@ -1,5 +1,6 @@
 import asyncio
 from datetime import date
+from typing import Optional
 
 import httpx
 
@@ -24,20 +25,32 @@ async def _fetch_crime_count(
 ) -> dict:
     url = POLICE_API_BASE
     params = {"lat": lat, "lng": lng, "date": date_str}
-    try:
-        response = await client.get(url, params=params, timeout=30.0)
-    except httpx.RequestError as exc:
-        raise RuntimeError(
-            f"Could not reach UK Police API: {exc}"
-        ) from exc
+    retry_delays = [10, 20, 30]
 
-    if response.status_code == 404 or response.text.strip() in ("", "[]"):
-        return {"district": district, "raw_count": 0}
+    for attempt, delay in enumerate(retry_delays):
+        try:
+            response = await client.get(url, params=params, timeout=30.0)
+        except httpx.RequestError as exc:
+            raise RuntimeError(
+                f"Could not reach UK Police API: {exc}"
+            ) from exc
 
-    response.raise_for_status()
+        if response.status_code == 404 or response.text.strip() in ("", "[]"):
+            return {"district": district, "raw_count": 0}
 
-    data = response.json()
-    return {"district": district, "raw_count": len(data) if data else 0}
+        if response.status_code in (429, 504):
+            if attempt < len(retry_delays) - 1:
+                await asyncio.sleep(delay)
+                continue
+            print(f"Warning: Police API unavailable for {district} after 3 retries. Using count 0.")
+            return {"district": district, "raw_count": 0}
+
+        response.raise_for_status()
+        data = response.json()
+        return {"district": district, "raw_count": len(data) if data else 0}
+
+    print(f"Warning: Police API unavailable for {district} after 3 retries. Using count 0.")
+    return {"district": district, "raw_count": 0}
 
 
 def _normalise(results: list[dict]) -> list[dict]:
@@ -61,7 +74,7 @@ def _normalise(results: list[dict]) -> list[dict]:
     ]
 
 
-async def score_all_postcodes(date: str | None = None) -> list[dict]:
+async def score_all_postcodes(date: Optional[str] = None) -> list[dict]:
     """Fetch crime counts for all London postcode districts and return normalised safety scores.
 
     Args:
@@ -97,7 +110,7 @@ async def score_all_postcodes(date: str | None = None) -> list[dict]:
     return _normalise(raw_results)
 
 
-async def score_single_postcode(district: str, date: str | None = None) -> dict:
+async def score_single_postcode(district: str, date: Optional[str] = None) -> dict:
     """Fetch the crime score for a single postcode district.
 
     The score is computed relative to only this district (always 0.5 since there is
