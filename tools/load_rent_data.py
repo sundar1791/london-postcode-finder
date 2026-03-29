@@ -22,42 +22,29 @@ from supabase import create_client
 # ---------------------------------------------------------------------------
 
 BOROUGH_TO_DISTRICTS: dict[str, list[str]] = {
-    "Barking and Dagenham": ["RM8", "RM9", "RM10"],
-    "Barnet": ["EN5", "N12", "NW7"],
-    "Bexley": ["DA5", "DA6", "DA7"],
-    "Brent": ["HA9", "NW10"],
-    "Bromley": ["BR1", "BR2"],
-    "Camden": ["NW1", "NW3"],
-    "City of Westminster": ["SW1", "W1"],
-    "Croydon": ["CR0", "CR2"],
-    "Ealing": ["UB1", "W13"],
-    "Enfield": ["EN1", "EN3"],
-    "Greenwich": ["SE9", "SE18"],
-    "Hackney": ["E8", "N16"],
-    "Hammersmith and Fulham": ["W6", "W12"],
-    "Haringey": ["N8", "N15"],
-    "Harrow": ["HA1", "HA3"],
-    "Havering": ["RM1", "RM11"],
-    "Hillingdon": ["UB4", "UB8"],
-    "Hounslow": ["TW3", "TW4"],
-    "Islington": ["N1", "N7"],
-    "Kensington and Chelsea": ["SW3", "W8"],
-    "Kingston upon Thames": ["KT1", "KT2"],
-    "Lambeth": ["SE24", "SW4"],
-    "Lewisham": ["SE13", "SE23"],
-    "Merton": ["SM4", "SW19"],
-    "Newham": ["E6", "E13"],
-    "Redbridge": ["IG1", "IG4"],
-    "Richmond upon Thames": ["TW9", "TW10"],
-    "Southwark": ["SE1", "SE15"],
-    "Sutton": ["SM1", "SM2"],
-    "Tower Hamlets": ["E1", "E14"],
-    "Waltham Forest": ["E17", "E10"],
-    "Wandsworth": ["SW11", "SW18"],
-    "City of London": ["EC1", "EC2"],
-    "Hackney (Inner)": ["E2", "E5"],
-    "Haringey (North)": ["N13", "N22"],
-    "Lewisham (South)": ["SE21", "SE22"],
+    "Bromley": ["BR1", "BR3"],
+    "Croydon": ["CR0"],
+    "Bexley": ["DA1"],
+    "Tower Hamlets": ["E1", "E2"],
+    "Waltham Forest": ["E11", "E17"],
+    "Westminster": ["SW1A", "W1A", "W2", "EC1A"],
+    "Enfield": ["EN1", "N13", "N21"],
+    "Harrow": ["HA1"],
+    "Redbridge": ["IG1"],
+    "Kingston upon Thames": ["KT1"],
+    "Islington": ["N1"],
+    "Haringey": ["N4"],
+    "Camden": ["NW1", "NW3", "NW6", "WC1A"],
+    "Brent": ["NW9"],
+    "Havering": ["RM1"],
+    "Southwark": ["SE1", "SE5"],
+    "Greenwich": ["SE18", "SE9"],
+    "Sutton": ["SM1"],
+    "Lambeth": ["SW16", "SW4", "SW8"],
+    "Merton": ["SW19"],
+    "Richmond upon Thames": ["TW1"],
+    "Ealing": ["UB1", "W13", "W5"],
+    "Hammersmith and Fulham": ["W6"],
 }
 
 # ---------------------------------------------------------------------------
@@ -84,10 +71,13 @@ def load_borough_rents(xlsx_path: Path = XLSX_PATH) -> dict[str, float]:
     if missing:
         raise ValueError(f"Expected columns not found in XLSX: {missing}. Got: {list(df.columns)}")
 
+    assert area_col is not None
+    assert rent_col is not None
+
     df = df[[c for c in [time_col, area_col, rent_col] if c]].copy()
-    df[area_col] = df[area_col].astype(str).str.strip()
+    df[area_col] = df[area_col].astype(str).str.strip()  # pyright: ignore[reportAttributeAccessIssue]
     df[rent_col] = pd.to_numeric(df[rent_col], errors="coerce")
-    df = df.dropna(subset=[area_col, rent_col])
+    df = df.dropna(subset=[area_col, rent_col])  # pyright: ignore[reportCallIssue]
 
     # The XLSX is a monthly time-series; take the most recent row per area
     if time_col:
@@ -134,6 +124,7 @@ def main() -> None:
     print(f"Matched {matched_boroughs} borough(s) → {len(rows)} district row(s).")
 
     client = create_client(url, key)
+    client.table("rent_data").delete().neq("id", 0).execute()
     result = (
         client.table("rent_data")
         .upsert(rows, on_conflict="district")
