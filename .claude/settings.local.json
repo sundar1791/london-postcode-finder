@@ -16,7 +16,8 @@
       "Bash(python:*)",
       "Bash(sort -t: -k1 -n)",
       "Bash(gh label:*)",
-      "Bash(gh issue:*)"
+      "Bash(gh issue:*)",
+      "Bash(.venv/bin/pip show:*)"
     ]
   }
 }

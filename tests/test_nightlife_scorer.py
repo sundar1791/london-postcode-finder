@@ -1,6 +1,6 @@
 import pytest
 
-from agents.nightlife_scorer import score_all_postcodes, score_single_postcode
+from scorers.nightlife_scorer import score_all_postcodes, score_single_postcode
 
 
 @pytest.mark.asyncio

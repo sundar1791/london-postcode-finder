@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from agents.crime_scorer import score_all_postcodes as crime_scores
-from agents.green_scorer import score_all_postcodes as green_scores
-from agents.nightlife_scorer import score_all_postcodes as nightlife_scores
-from agents.transport_scorer import score_all_postcodes as transport_scores
-from agents.rent_scorer import score_all_postcodes as rent_scores
+from scorers.crime_scorer import score_all_postcodes as crime_scores
+from scorers.green_scorer import score_all_postcodes as green_scores
+from scorers.nightlife_scorer import score_all_postcodes as nightlife_scores
+from scorers.transport_scorer import score_all_postcodes as transport_scores
+from scorers.rent_scorer import score_all_postcodes as rent_scores
 
 TEST_POSTCODES = ["E1", "SW1A", "SE22", "N1", "BR1"]
 
