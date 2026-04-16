@@ -1,4 +1,4 @@
-from agents.rent_scorer import score_all_postcodes, score_single_postcode
+from scorers.rent_scorer import score_all_postcodes, score_single_postcode
 
 
 def test_score_all_postcodes_returns_at_least_30_dicts():

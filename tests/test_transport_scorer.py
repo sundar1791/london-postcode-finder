@@ -1,6 +1,6 @@
 import pytest
 
-from agents.transport_scorer import score_all_postcodes, score_single_postcode
+from scorers.transport_scorer import score_all_postcodes, score_single_postcode
 
 
 @pytest.mark.asyncio

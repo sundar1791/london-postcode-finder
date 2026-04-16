@@ -13,7 +13,11 @@
       "Bash(done)",
       "Bash(.venv/bin/python:*)",
       "Bash(.venv/bin/pytest:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(sort -t: -k1 -n)",
+      "Bash(gh label:*)",
+      "Bash(gh issue:*)",
+      "Bash(.venv/bin/pip show:*)"
     ]
   }
 }
