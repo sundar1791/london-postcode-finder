@@ -1,10 +1,53 @@
 import asyncio
+import logging
 import os
 from typing import Optional
 
 import httpx
+from dotenv import load_dotenv
+from supabase import create_client
 
 from tools.postcode import get_all_postcode_coordinates, get_postcode_coordinates
+
+load_dotenv()
+
+
+def _get_client():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url:
+        raise ValueError("SUPABASE_URL environment variable is not set")
+    if not key:
+        raise ValueError("SUPABASE_KEY environment variable is not set")
+    try:
+        return create_client(url, key)
+    except Exception as exc:
+        raise RuntimeError(f"Could not connect to Supabase: {exc}") from exc
+
+
+def score_all_from_cache(supabase=None) -> dict[str, float]:
+    if supabase is None:
+        supabase = _get_client()
+    try:
+        response = (
+            supabase.table("cached_scores")
+            .select("district,score,needs_retry")
+            .eq("dimension", "transport")
+            .execute()
+        )
+    except Exception as exc:
+        raise RuntimeError(f"Could not read cached_scores for dimension 'transport': {exc}") from exc
+
+    rows = response.data
+    if not rows:
+        raise RuntimeError("cached_scores returned 0 rows for dimension 'transport' — cache may not be populated")
+
+    result = {}
+    for row in rows:
+        if row.get("needs_retry"):
+            logging.warning("[transport] District %s has needs_retry=True — score is a placeholder", row["district"])
+        result[row["district"]] = row["score"]
+    return result
 
 TFL_APP_KEY: Optional[str] = os.environ.get("TFL_APP_KEY")
 if not TFL_APP_KEY:
