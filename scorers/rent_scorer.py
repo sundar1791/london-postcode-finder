@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import statistics
@@ -137,3 +138,28 @@ def score_single_postcode(district: str) -> dict:
         return {"district": district, "median_rent": median_rent, "score": 0.5}
 
     raise ValueError(f"District '{district}' not found in rent_data and no fallback available")
+
+
+def score_all_from_cache(supabase=None) -> dict[str, float]:
+    if supabase is None:
+        supabase = _get_client()
+    try:
+        response = (
+            supabase.table("cached_scores")
+            .select("district,score,needs_retry")
+            .eq("dimension", "rent")
+            .execute()
+        )
+    except Exception as exc:
+        raise RuntimeError(f"Could not read cached_scores for dimension 'rent': {exc}") from exc
+
+    rows = response.data
+    if not rows:
+        raise RuntimeError("cached_scores returned 0 rows for dimension 'rent' — cache may not be populated")
+
+    result = {}
+    for row in rows:
+        if row.get("needs_retry"):
+            logging.warning("[rent] District %s has needs_retry=True — score is a placeholder", row["district"])
+        result[row["district"]] = row["score"]
+    return result
