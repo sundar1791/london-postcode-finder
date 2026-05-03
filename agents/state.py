@@ -29,6 +29,7 @@ class LondonSearchState(TypedDict):
     qualitative_insights: Annotated[dict, operator.or_]
 
     # Synthesiser output
+    synthesiser_instruction: str
     top_5: list
 
     # Knowledge writer input — Annotated for parallel writes
@@ -55,6 +56,7 @@ def make_initial_state(
         weighted_scores={},
         top_5_districts=[],
         qualitative_insights={},
+        synthesiser_instruction="",
         top_5=[],
         new_learnings=[],
     )
