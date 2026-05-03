@@ -149,8 +149,66 @@ async def rent_scorer_node(state: LondonSearchState) -> dict:
 
 
 async def synthesiser_pass1_node(state: LondonSearchState) -> dict:
-    print("synthesiser_pass1_node")
-    return {}
+    crime_scores = state.get("crime_scores", {})
+    green_scores = state.get("green_scores", {})
+    nightlife_scores = state.get("nightlife_scores", {})
+    transport_scores = state.get("transport_scores", {})
+    rent_scores = state.get("rent_scores", {})
+    allocation = state.get("adjusted_allocation") or state.get("token_allocation", {})
+
+    crime_w = allocation.get("crime", 0) / 100
+    green_w = allocation.get("green", 0) / 100
+    nightlife_w = allocation.get("nightlife", 0) / 100
+    transport_w = allocation.get("transport", 0) / 100
+    rent_w = allocation.get("rent", 0) / 100
+
+    logging.info(
+        "synthesiser_pass1_node: weights crime=%.2f green=%.2f nightlife=%.2f transport=%.2f rent=%.2f",
+        crime_w, green_w, nightlife_w, transport_w, rent_w,
+    )
+
+    all_districts = (
+        set(crime_scores)
+        | set(green_scores)
+        | set(nightlife_scores)
+        | set(transport_scores)
+        | set(rent_scores)
+    )
+
+    weighted_scores: dict = {}
+    for district in all_districts:
+        missing = []
+        def _get(scores: dict, dim: str) -> float:
+            val = scores.get(district)
+            if val is None:
+                missing.append(dim)
+                return 0.0
+            return val
+
+        c = _get(crime_scores, "crime")
+        g = _get(green_scores, "green")
+        n = _get(nightlife_scores, "nightlife")
+        t = _get(transport_scores, "transport")
+        r = _get(rent_scores, "rent")
+
+        if missing:
+            logging.warning("synthesiser_pass1_node: %s missing dimensions %s — using 0.0", district, missing)
+
+        weighted_scores[district] = (
+            c * crime_w + g * green_w + n * nightlife_w + t * transport_w + r * rent_w
+        )
+
+    ranked = sorted(weighted_scores, key=lambda d: weighted_scores[d], reverse=True)
+    top_5 = ranked[:5]
+
+    logging.info("synthesiser_pass1_node: top 5 districts:")
+    for i, d in enumerate(top_5, 1):
+        logging.info("  %d. %s — %.4f", i, d, weighted_scores[d])
+
+    return {
+        "weighted_scores": weighted_scores,
+        "top_5_districts": top_5,
+    }
 
 
 async def research_agent_node(state: LondonSearchState, district: str) -> dict:
