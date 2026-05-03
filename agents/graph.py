@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import sys
 import os
 
@@ -19,28 +21,63 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
 
 
 async def crime_scorer_node(state: LondonSearchState) -> dict:
-    print("crime_scorer_node")
-    return {}
+    from scorers.crime_scorer import score_all_from_cache
+    logging.info("crime_scorer_node: loading scores from cache")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, score_all_from_cache)
+        logging.info("crime_scorer_node: loaded %d districts", len(result))
+        return {"crime_scores": result}
+    except Exception as exc:
+        logging.error("crime_scorer_node: cache read failed — %s", exc)
+        return {"crime_scores": {}}
 
 
 async def green_scorer_node(state: LondonSearchState) -> dict:
-    print("green_scorer_node")
-    return {}
+    from scorers.green_scorer import score_all_from_cache
+    logging.info("green_scorer_node: loading scores from cache")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, score_all_from_cache)
+        logging.info("green_scorer_node: loaded %d districts", len(result))
+        return {"green_scores": result}
+    except Exception as exc:
+        logging.error("green_scorer_node: cache read failed — %s", exc)
+        return {"green_scores": {}}
 
 
 async def nightlife_scorer_node(state: LondonSearchState) -> dict:
-    print("nightlife_scorer_node")
-    return {}
+    from scorers.nightlife_scorer import score_all_from_cache
+    logging.info("nightlife_scorer_node: loading scores from cache")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, score_all_from_cache)
+        logging.info("nightlife_scorer_node: loaded %d districts", len(result))
+        return {"nightlife_scores": result}
+    except Exception as exc:
+        logging.error("nightlife_scorer_node: cache read failed — %s", exc)
+        return {"nightlife_scores": {}}
 
 
 async def transport_scorer_node(state: LondonSearchState) -> dict:
-    print("transport_scorer_node")
-    return {}
+    from scorers.transport_scorer import score_all_from_cache
+    logging.info("transport_scorer_node: loading scores from cache")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, score_all_from_cache)
+        logging.info("transport_scorer_node: loaded %d districts", len(result))
+        return {"transport_scores": result}
+    except Exception as exc:
+        logging.error("transport_scorer_node: cache read failed — %s", exc)
+        return {"transport_scores": {}}
 
 
 async def rent_scorer_node(state: LondonSearchState) -> dict:
-    print("rent_scorer_node")
-    return {}
+    from scorers.rent_scorer import score_all_from_cache
+    logging.info("rent_scorer_node: loading scores from cache")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, score_all_from_cache)
+        logging.info("rent_scorer_node: loaded %d districts", len(result))
+        return {"rent_scores": result}
+    except Exception as exc:
+        logging.error("rent_scorer_node: cache read failed — %s", exc)
+        return {"rent_scores": {}}
 
 
 async def synthesiser_pass1_node(state: LondonSearchState) -> dict:
