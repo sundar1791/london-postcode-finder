@@ -1,7 +1,15 @@
 import asyncio
+import json
 import logging
 import sys
 import os
+import re
+
+import anthropic
+from anthropic.types import TextBlock
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,9 +23,69 @@ async def knowledge_loader_node(state: LondonSearchState) -> dict:
     return {}
 
 
+_PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts")
+
+
 async def orchestrator_node(state: LondonSearchState) -> dict:
-    print("orchestrator_node")
-    return {}
+    with open(os.path.join(_PROMPTS_DIR, "orchestrator.md"), "r") as f:
+        system_prompt = f.read()
+
+    user_message = (
+        f"Token allocation: {json.dumps(state['token_allocation'])}\n"
+        f"Context: {state['context_text']}"
+    )
+
+    def _call_claude() -> str:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=500,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        block = response.content[0]
+        return block.text if isinstance(block, TextBlock) else ""
+
+    try:
+        raw = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+        parsed = json.loads(cleaned)
+
+        if not parsed.get("valid", True):
+            raise ValueError(parsed.get("error", "Orchestrator returned invalid=false"))
+
+        has_spawn = bool(parsed.get("spawn"))
+        allocation_changed = parsed.get("adjusted_allocation") != state["token_allocation"]
+        if has_spawn and allocation_changed:
+            classification = "combination"
+        elif has_spawn:
+            classification = "spawn"
+        elif allocation_changed:
+            classification = "adjust"
+        else:
+            classification = "ignore"
+
+        print(f"orchestrator_node: type={classification} reasoning={parsed.get('reasoning', '')}")
+
+        return {
+            "adjusted_allocation": parsed["adjusted_allocation"],
+            "context_analysis": {
+                "spawn": parsed.get("spawn"),
+                "reasoning": parsed.get("reasoning", ""),
+                "type": classification,
+            },
+            "synthesiser_instruction": parsed.get("synthesiser_instruction", ""),
+        }
+
+    except ValueError:
+        raise
+    except Exception as exc:
+        logging.error("orchestrator_node: Claude call failed — %s", exc)
+        return {
+            "adjusted_allocation": state["token_allocation"],
+            "context_analysis": {},
+            "synthesiser_instruction": "",
+        }
 
 
 async def crime_scorer_node(state: LondonSearchState) -> dict:
