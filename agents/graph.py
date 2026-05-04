@@ -211,9 +211,53 @@ async def synthesiser_pass1_node(state: LondonSearchState) -> dict:
     }
 
 
+_RESEARCH_SYSTEM_PROMPT = (
+    "You are a London neighbourhood research agent. Your job is to find specific, "
+    "recent, actionable insights about a London postcode district that data alone "
+    "cannot capture. Focus on: recent news, Reddit/forum discussions, transport "
+    "developments, crime trends, green space quality, nightlife reputation, and "
+    "rent trajectory. Be specific — name actual streets, stations, developments. "
+    "Avoid generic descriptions that could apply to any London neighbourhood."
+)
+
+
 async def research_agent_node(state: LondonSearchState, district: str) -> dict:
-    print(f"research_agent_node: {district}")
-    return {}
+    logging.info("research_agent_node: starting research for %s", district)
+
+    def _call_claude() -> list:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            system=_RESEARCH_SYSTEM_PROMPT,
+            tools=[{"type": "web_search_20250305", "name": "web_search"}],
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Research the London postcode district {district}. Find 3-5 specific, recent "
+                    "insights that would help someone decide whether to live there. Focus on anything "
+                    "that has changed recently or that local residents commonly mention."
+                ),
+            }],
+        )
+        text = " ".join(
+            block.text for block in response.content
+            if isinstance(block, TextBlock)
+        )
+        raw_lines = text.splitlines()
+        insights = [
+            re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
+            for line in raw_lines
+        ]
+        return [s for s in insights if s]
+
+    try:
+        insights = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+        logging.info("research_agent_node: completed %s — %d insights", district, len(insights))
+        return {"qualitative_insights": {district: insights}}
+    except Exception as exc:
+        logging.error("research_agent_node: failed for %s — %s", district, exc)
+        return {"qualitative_insights": {district: ["Research unavailable for this district."]}}
 
 
 async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
@@ -226,11 +270,15 @@ async def knowledge_writer_node(state: LondonSearchState) -> dict:
     return {}
 
 
-# TODO US-046: replace with true parallel fan-out once top_5_districts is known at graph-build time
-async def research_agents_sequential_node(state: LondonSearchState) -> dict:
-    for district in state.get("top_5_districts", []):
-        await research_agent_node(state, district)
-    return {}
+async def research_agents_parallel_node(state: LondonSearchState) -> dict:
+    districts = state.get("top_5_districts", [])
+    logging.info("research_agents_parallel_node: starting parallel research for %s", districts)
+    results = await asyncio.gather(*[research_agent_node(state, d) for d in districts])
+    merged: dict = {}
+    for r in results:
+        merged.update(r.get("qualitative_insights", {}))
+    logging.info("research_agents_parallel_node: all %d districts complete", len(merged))
+    return {"qualitative_insights": merged}
 
 
 def build_graph() -> CompiledStateGraph:
@@ -244,7 +292,7 @@ def build_graph() -> CompiledStateGraph:
     graph.add_node("transport_scorer", transport_scorer_node)
     graph.add_node("rent_scorer", rent_scorer_node)
     graph.add_node("synthesiser_pass1", synthesiser_pass1_node)
-    graph.add_node("research_agents", research_agents_sequential_node)
+    graph.add_node("research_agents", research_agents_parallel_node)
     graph.add_node("synthesiser_pass2", synthesiser_pass2_node)
     graph.add_node("knowledge_writer", knowledge_writer_node)
 
