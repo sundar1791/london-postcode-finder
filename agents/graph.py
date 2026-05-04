@@ -47,7 +47,16 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
         return block.text if isinstance(block, TextBlock) else ""
 
     try:
-        raw = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+        raw = ""
+        for _attempt in range(1, 4):
+            try:
+                raw = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+                break
+            except anthropic.RateLimitError:
+                if _attempt == 3:
+                    raise
+                logging.warning("orchestrator_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
+                await asyncio.sleep(15)
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
         parsed = json.loads(cleaned)
 
@@ -199,7 +208,18 @@ async def synthesiser_pass1_node(state: LondonSearchState) -> dict:
         )
 
     ranked = sorted(weighted_scores, key=lambda d: weighted_scores[d], reverse=True)
-    top_5 = ranked[:5]
+    top_10 = ranked[:10]
+
+    spawn_scores = state.get("spawn_scores") or {}
+    if spawn_scores:
+        filtered = [d for d in top_10 if spawn_scores.get(d, 0) > 0]
+        logging.info(
+            "synthesiser_pass1_node: spawn filter applied — %d of %d districts passed",
+            len(filtered), len(top_10),
+        )
+        top_5 = filtered[:5]
+    else:
+        top_5 = top_10[:5]
 
     logging.info("synthesiser_pass1_node: top 5 districts:")
     for i, d in enumerate(top_5, 1):
@@ -207,6 +227,7 @@ async def synthesiser_pass1_node(state: LondonSearchState) -> dict:
 
     return {
         "weighted_scores": weighted_scores,
+        "top_10_districts": top_10,
         "top_5_districts": top_5,
     }
 
@@ -217,7 +238,9 @@ _RESEARCH_SYSTEM_PROMPT = (
     "cannot capture. Focus on: recent news, Reddit/forum discussions, transport "
     "developments, crime trends, green space quality, nightlife reputation, and "
     "rent trajectory. Be specific — name actual streets, stations, developments. "
-    "Avoid generic descriptions that could apply to any London neighbourhood."
+    "Avoid generic descriptions that could apply to any London neighbourhood. "
+    "Perform a maximum of 2 web searches. Be selective — choose searches that will "
+    "yield the most specific and recent information about this district."
 )
 
 
@@ -227,8 +250,8 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
     def _call_claude() -> list:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1000,
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
             system=_RESEARCH_SYSTEM_PROMPT,
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{
@@ -252,7 +275,16 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
         return [s for s in insights if s]
 
     try:
-        insights = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+        insights: list = []
+        for _attempt in range(1, 4):
+            try:
+                insights = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+                break
+            except anthropic.RateLimitError:
+                if _attempt == 3:
+                    raise
+                logging.warning("research_agent_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
+                await asyncio.sleep(15)
         logging.info("research_agent_node: completed %s — %d insights", district, len(insights))
         return {"qualitative_insights": {district: insights}}
     except Exception as exc:
@@ -261,8 +293,72 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
 
 
 async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
-    print("synthesiser_pass2_node")
-    return {}
+    with open(os.path.join(_PROMPTS_DIR, "synthesiser_pass2.md"), "r") as f:
+        system_prompt = f.read()
+
+    top_5_districts = state.get("top_5_districts", [])
+    weighted_scores = state.get("weighted_scores", {})
+    qualitative_insights = state.get("qualitative_insights", {})
+
+    top_5_with_scores = "\n".join(
+        f"{i}. {d} — {weighted_scores.get(d, 0.0):.4f}"
+        for i, d in enumerate(top_5_districts, 1)
+    )
+
+    insights_sections = []
+    for d in top_5_districts:
+        insights = qualitative_insights.get(d, [])
+        bullet_lines = "\n".join(f"  - {line}" for line in insights)
+        insights_sections.append(f"{d}:\n{bullet_lines}" if bullet_lines else f"{d}:\n  - No research available.")
+    qualitative_insights_text = "\n\n".join(insights_sections)
+
+    user_message = (
+        system_prompt
+        .replace("{token_allocation}", json.dumps(state.get("token_allocation", {})))
+        .replace("{adjusted_allocation}", json.dumps(state.get("adjusted_allocation", {})))
+        .replace("{synthesiser_instruction}", state.get("synthesiser_instruction", ""))
+        .replace("{top_5_with_scores}", top_5_with_scores)
+        .replace("{qualitative_insights}", qualitative_insights_text)
+        .replace("{knowledge_base}", state.get("knowledge_base", ""))
+    )
+
+    def _call_claude() -> dict:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        block = response.content[0]
+        raw = block.text if isinstance(block, TextBlock) else ""
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+        return json.loads(cleaned)
+
+    try:
+        parsed: dict = {}
+        for _attempt in range(1, 4):
+            try:
+                parsed = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+                break
+            except anthropic.RateLimitError:
+                if _attempt == 3:
+                    raise
+                logging.warning("synthesiser_pass2_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
+                await asyncio.sleep(15)
+        recommendations = parsed.get("recommendations", [])
+        for rec in recommendations:
+            logging.info(
+                "synthesiser_pass2_node: #%d %s — %s",
+                rec.get("rank", "?"), rec.get("district", "?"), rec.get("verdict", ""),
+            )
+        return {
+            "top_5": recommendations,
+            "new_learnings": parsed.get("new_learnings", []),
+        }
+    except Exception as exc:
+        logging.error("synthesiser_pass2_node: Claude call failed — %s", exc)
+        return {"top_5": [], "new_learnings": []}
 
 
 async def knowledge_writer_node(state: LondonSearchState) -> dict:

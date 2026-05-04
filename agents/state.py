@@ -23,7 +23,9 @@ class LondonSearchState(TypedDict):
     transport_scores: dict
     rent_scores: dict
     weighted_scores: dict
+    top_10_districts: list
     top_5_districts: list
+    spawn_scores: dict
 
     # Research agent output (Pass 2) — Annotated for parallel writes
     qualitative_insights: Annotated[dict, operator.or_]
@@ -54,7 +56,9 @@ def make_initial_state(
         transport_scores={},
         rent_scores={},
         weighted_scores={},
+        top_10_districts=[],
         top_5_districts=[],
+        spawn_scores={},
         qualitative_insights={},
         synthesiser_instruction="",
         top_5=[],
