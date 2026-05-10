@@ -10,7 +10,7 @@ from supabase import create_client
 
 from tools.postcode import get_all_postcode_coordinates
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 def _get_client():

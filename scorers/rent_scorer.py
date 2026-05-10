@@ -6,7 +6,7 @@ from typing import Optional
 
 from supabase import create_client
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 
 def _get_client():
