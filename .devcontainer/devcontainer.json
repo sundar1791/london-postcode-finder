@@ -1,0 +1,30 @@
+{
+  "name": "London Postcode Finder",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+
+  "forwardPorts": [8000, 54321],
+  "portsAttributes": {
+    "8000": { "label": "FastAPI" },
+    "54321": { "label": "Supabase local" }
+  },
+
+  "secrets": {
+    "ANTHROPIC_API_KEY": { "description": "Anthropic API key" },
+    "TFL_APP_KEY": { "description": "TfL API key" },
+    "SUPABASE_URL": { "description": "Supabase project URL" },
+    "SUPABASE_KEY": { "description": "Supabase anon public key" },
+    "GROQ_API_KEY": { "description": "Groq API key (optional)" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "github.copilot"
+      ]
+    }
+  }
+}
