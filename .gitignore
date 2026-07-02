@@ -26,3 +26,4 @@ node_modules/
 firebase-debug.log
 .vercel
 .env.local
+supabase/.temp/
