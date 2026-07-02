@@ -38,13 +38,15 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
     def _call_claude() -> str:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-5",
             max_tokens=500,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
-        block = response.content[0]
-        return block.text if isinstance(block, TextBlock) else ""
+        return "".join(
+            block.text for block in response.content
+            if getattr(block, "type", None) == "text"
+        )
 
     try:
         raw = ""
@@ -58,7 +60,7 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
                 logging.warning("orchestrator_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
                 await asyncio.sleep(15)
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
-        parsed = json.loads(cleaned)
+        parsed = json.loads(cleaned, strict=False)
 
         if not parsed.get("valid", True):
             raise ValueError(parsed.get("error", "Orchestrator returned invalid=false"))
@@ -95,6 +97,22 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
             "context_analysis": {},
             "synthesiser_instruction": "",
         }
+
+
+async def context_sub_agent_node(state: LondonSearchState) -> dict:
+    from agents.context_sub_agent import run_context_sub_agent
+    spawn = (state.get("context_analysis") or {}).get("spawn")
+    if not spawn:
+        logging.info("context_sub_agent_node: no spawn detected — skipping")
+        return {"spawn_scores": {}}
+    logging.info("context_sub_agent_node: spawn detected — running context sub-agent")
+    try:
+        result = await run_context_sub_agent(spawn)
+        logging.info("context_sub_agent_node: completed — %d districts scored", len(result))
+        return {"spawn_scores": result}
+    except Exception as exc:
+        logging.error("context_sub_agent_node: failed — %s", exc)
+        return {"spawn_scores": {}}
 
 
 async def crime_scorer_node(state: LondonSearchState) -> dict:
@@ -263,9 +281,9 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
                 ),
             }],
         )
-        text = " ".join(
+        text = "".join(
             block.text for block in response.content
-            if isinstance(block, TextBlock)
+            if getattr(block, "type", None) == "text"
         )
         raw_lines = text.splitlines()
         insights = [
@@ -325,15 +343,17 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
     def _call_claude() -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            model="claude-sonnet-5",
+            max_tokens=4000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
-        block = response.content[0]
-        raw = block.text if isinstance(block, TextBlock) else ""
+        raw = "".join(
+            block.text for block in response.content
+            if getattr(block, "type", None) == "text"
+        )
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
-        return json.loads(cleaned)
+        return json.loads(cleaned, strict=False)
 
     try:
         parsed: dict = {}
@@ -382,6 +402,7 @@ def build_graph() -> CompiledStateGraph:
 
     graph.add_node("knowledge_loader", knowledge_loader_node)
     graph.add_node("orchestrator", orchestrator_node)
+    graph.add_node("context_sub_agent", context_sub_agent_node)
     graph.add_node("crime_scorer", crime_scorer_node)
     graph.add_node("green_scorer", green_scorer_node)
     graph.add_node("nightlife_scorer", nightlife_scorer_node)
@@ -394,9 +415,10 @@ def build_graph() -> CompiledStateGraph:
 
     graph.set_entry_point("knowledge_loader")
     graph.add_edge("knowledge_loader", "orchestrator")
+    graph.add_edge("orchestrator", "context_sub_agent")
 
     for scorer in ("crime_scorer", "green_scorer", "nightlife_scorer", "transport_scorer", "rent_scorer"):
-        graph.add_edge("orchestrator", scorer)
+        graph.add_edge("context_sub_agent", scorer)
         graph.add_edge(scorer, "synthesiser_pass1")
 
     graph.add_edge("synthesiser_pass1", "research_agents")
