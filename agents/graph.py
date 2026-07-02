@@ -39,7 +39,7 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
             model="claude-sonnet-5",
-            max_tokens=500,
+            max_tokens=1500,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
