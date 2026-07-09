@@ -19,8 +19,19 @@ from agents.state import LondonSearchState, make_initial_state
 
 
 async def knowledge_loader_node(state: LondonSearchState) -> dict:
-    print("knowledge_loader_node")
-    return {}
+    from agents.knowledge_loader import load_knowledge
+    logging.info("knowledge_loader_node: loading accumulated knowledge")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, load_knowledge)
+        cold_start = result.startswith("No accumulated knowledge yet")
+        logging.info(
+            "knowledge_loader_node: loaded knowledge_base (%d chars, cold_start=%s)",
+            len(result), cold_start,
+        )
+        return {"knowledge_base": result}
+    except Exception as exc:
+        logging.error("knowledge_loader_node: failed to load knowledge — %s", exc)
+        return {"knowledge_base": ""}
 
 
 _PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts")
