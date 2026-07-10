@@ -355,7 +355,7 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
             model="claude-sonnet-5",
-            max_tokens=4000,
+            max_tokens=8000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -393,7 +393,19 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
 
 
 async def knowledge_writer_node(state: LondonSearchState) -> dict:
-    print("knowledge_writer_node")
+    from agents.knowledge_writer import write_knowledge
+    new_learnings = state.get("new_learnings", [])
+    logging.info("knowledge_writer_node: persisting %d learnings", len(new_learnings))
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, write_knowledge, new_learnings
+        )
+        logging.info(
+            "knowledge_writer_node: wrote %d learnings, query_count=%d",
+            result["learnings_written"], result["query_count"],
+        )
+    except Exception as exc:
+        logging.error("knowledge_writer_node: failed to persist knowledge — %s", exc)
     return {}
 
 
