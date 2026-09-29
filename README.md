@@ -1,227 +1,159 @@
 # London Postcode Finder
 
-A multi-agent web app that recommends where to live in London based on your lifestyle priorities — and gets smarter with every search.
+A multi-agent web app that recommends where to live in London based on what you care about — and gets smarter with every search.
 
----
+You spend 100 tokens across five dimensions (safety, green space, nightlife, transport, affordability) and can add a sentence of context ("I need a nursery nearby for my daughter"). A LangGraph pipeline scores 40 London postcode districts, sends five research agents to the web for the best fits, and writes five recommendations with an honest tradeoff for each. The UI shows every agent decision live as it happens.
 
-## What It Does
-
-You distribute 100 tokens across five dimensions that matter to you:
-
-| Dimension | What it measures |
-|---|---|
-| Safety | Crime rate per capita (UK Police API) |
-| Green Space | Parks and open space within walking distance (OpenStreetMap) |
-| Nightlife | Bars, restaurants, and venues nearby (OpenStreetMap) |
-| Transport | TfL connectivity score (TfL Unified API) |
-| Rent | Median private rental cost (ONS data) |
-
-You can also add a short note in plain English — "I'm a mother of two and need a nursery nearby" or "I want to be close to a mosque." The orchestrator reads this and either adjusts the token weights accordingly or spins up a specialised agent to score postcodes on that dimension using live map data.
-
-The system scores all 40 London postcode districts, weights them by your priorities, and returns the top 5 with a written rationale for each.
-
----
-
-## How It Gets Smarter Over Time
-
-Every query teaches the system something. After each search, a Knowledge Writer agent saves a structured learning to a database table — what the user wanted, how the agent handled it, what the outcome was. Every 50 queries, a Distillation Engine reads all learnings and rewrites a compressed `distilled_brain` — a set of heuristics and rules that the orchestrator and synthesiser read at the start of every subsequent query.
-
-The result is a system that, over time, gets better at interpreting open-ended requests, recognising user archetypes, and writing more accurate rationale.
-
-You can export the accumulated knowledge at any time as a `knowledge.md` file — portable and reusable in future projects.
+- **Search** (`/`) — sliders, context, a live agent timeline, results and a "Why these results" drawer
+- **What it has learned** (`/learning`) — the distilled memory, raw notes, and how the rules changed over time
+- **How it works** (`/how-it-works`) — the architecture, in plain English
 
 ---
 
 ## Architecture
 
 ```
-User: 100 tokens across 5 dimensions + optional context (≤500 chars)
-              ↓
-    [Knowledge Loader]
-    Reads distilled brain + last 10 raw learnings from Supabase
-              ↓
-    [Orchestrator — Claude Sonnet]
-    Validates tokens, classifies context:
-    - Nonsensical → ignore
-    - Maps to existing dimension → adjust token weights
-    - New dimension → spawn Context Sub-Agent
-              ↓
-    ┌──────────────────────────────────────────────────┐
-    │  5 Core Sub-Agents (always, in parallel)         │
-    │  Crime · Green Space · Nightlife · Transport · Rent │
-    │                                                  │
-    │  + Context Sub-Agent (when needed)               │
-    │    Overpass query or web search fallback         │
-    └──────────────────────────────────────────────────┘
-              ↓
-    [Synthesiser — Claude Sonnet]
-    Weights scores, picks top 5, writes rationale
-    Populates new learnings for knowledge base
-              ↓
-    [Knowledge Writer]
-    Saves learnings to Supabase, triggers distillation every 50 queries
-              ↓
-    Results streamed to Next.js frontend
+Browser ──► Next.js (Vercel) ──fetch + Server-Sent Events──► FastAPI (Railway, Docker)
+                                                                  │
+                                                                  ▼
+                                                          LangGraph pipeline
+                                                                  │
+                                        Supabase (Postgres) ◄─────┴─────► Anthropic · Overpass · TfL
 ```
 
-**Claude is called twice per search** (orchestrator + synthesiser). Everything else is pure Python — zero LLM cost.
+The backend is a long-running container rather than a serverless function because a search takes 45–90 seconds and streams progress the whole way.
 
----
+### The pipeline
 
-## Tech Stack
+```
+Knowledge Loader        distilled brain + last 10 raw learnings
+      ↓
+Orchestrator            Claude: ignore / adjust weights / spawn a context agent
+      ↓
+Context Sub-Agent       only when spawned — one combined Overpass query (or web search), cached 30 days
+      ↓
+5 Scorers (parallel)    deterministic lookups of monthly pre-computed scores — no LLM
+      ↓
+Synthesiser pass 1      weight, rank, apply the spawn filter, keep top 5
+      ↓
+5 Research Agents       Claude + web search, one per district, bounded concurrency
+      ↓
+Synthesiser pass 2      Claude: verdict, rationale, tradeoff, tip + 2–3 learnings
+      ↓
+Knowledge Writer        save learnings, count the query
+      ↓
+Distiller               every DISTILL_EVERY_N searches, after the response is sent
+```
 
-| Layer | Tool |
+**Scorers are not agents.** The five data pipelines in `/scorers` are deterministic. Judgement lives in `/agents`: the orchestrator, the context sub-agent, the research agents and the distiller.
+
+**Spawn is a filter.** A district with no nursery nearby is removed from the shortlist rather than averaged in.
+
+**Layered memory, not RAG.** The distilled brain (compressed, ≤12 heuristics) plus the last 10 raw notes are injected into every search, like a long conversation's summary plus its recent turns.
+
+### Streaming events
+
+`POST /api/search` returns `text/event-stream` with typed events: `started`, `knowledge_loaded`, `orchestrator`, `spawn_started`, `spawn_complete`, `scorer_complete`, `scoring_complete`, `shortlist`, `research_started`, `research_complete`, `synthesis_complete`, `learning_saved`, `done` / `error`.
+
+### API
+
+| Endpoint | Purpose |
 |---|---|
-| Agent orchestration | LangGraph |
-| LLM | Claude API (Sonnet) |
-| Data fetching | Pure Python + httpx |
-| Backend | FastAPI |
-| Frontend | Next.js + Vercel AI SDK |
-| Database | Supabase (Postgres) |
-| Hosting | Vercel |
+| `GET /api/health` | Liveness + DB connectivity |
+| `POST /api/search` | `{token_allocation, context_text, session_id}` → SSE stream. Tokens use keys `crime, green, nightlife, transport, rent`, each 0–100, summing to 100; context ≤ 500 chars |
+| `GET /api/knowledge` | Distilled brain, 10 recent learnings, query count, distillation history |
+| `GET /api/knowledge/export` | The knowledge base as `knowledge.md` |
+| `POST /api/admin/distill` | Run distillation now (header `X-Admin-Token`) |
+| `GET /api/cron/refresh-scores` | Re-run the monthly score pre-computation (header `Authorization: Bearer $CRON_SECRET`) |
+| `GET /api/demo/recorded` | A recorded example run the UI can replay |
+
+Cost protection: `RATE_LIMIT_PER_HOUR` per IP (default 5) and `DAILY_SEARCH_CAP` across everyone (default 100). Both return a 429 that the UI turns into "See a recorded example run". Each search has a 240 s hard timeout.
 
 ---
 
-## Database Tables
+## Run it locally
 
-Three tables, all managed via migration files in `/supabase/migrations/`:
-
-**`searches`** — every query a user runs. Tokens, context text, results, session ID.
-
-**`learnings`** — one row per query, written by the Knowledge Writer. Full-sentence descriptions of what was asked, what the agent did, and what the outcome was. The raw material for distillation.
-
-**`agent_config`** — a single row. Holds `distilled_brain` (the compressed heuristics rewritten every 50 queries) and `query_count`.
-
----
-
-## Local Setup
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Docker Desktop (running)
-- GitHub CLI (`gh`)
-- Supabase CLI (`supabase`)
-- Vercel CLI (`vercel`)
-
-### Steps
+Prerequisites: Python 3.11, Node 20+, Docker Desktop, Supabase CLI.
 
 ```bash
-# Clone
-git clone https://github.com/YOUR_USERNAME/london-postcode-finder.git
-cd london-postcode-finder
-
-# Python dependencies
+# Backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env            # fill in ANTHROPIC_API_KEY, SUPABASE_URL/KEY (local values from `supabase status`)
 
-# Environment variables
-cp .env.example .env
-# Fill in your actual keys — see .env.example for what's needed
-
-# Start local Supabase (requires Docker running)
 supabase start
+supabase migration up --local   # apply migrations without wiping data
+python tools/load_rent_data.py  # rent_data from data/ons_rent.xlsx
+python tools/precompute_scores.py   # fills cached_scores (slow: live Police/Overpass/TfL calls)
 
-# Apply database migrations
-supabase db reset
+uvicorn api.main:app --reload --port 8000
 
-# Run backend
-uvicorn api.main:app --reload
-
-# Run frontend (separate terminal)
-cd frontend && npm install && npm run dev
+# Frontend (second terminal)
+cd frontend
+cp .env.example .env.local
+npm install && npm run dev      # http://localhost:3000
 ```
 
-Open `http://localhost:3000` for the app.
-Open `http://localhost:54323` for Supabase Studio (local database dashboard).
+> `supabase db reset` wipes `cached_scores` and `rent_data`. Prefer `supabase migration up --local`; if you must reset, re-run the two data scripts afterwards.
 
----
+Useful scripts:
 
-## API Keys Required
-
-| Key | Where to get it | Cost |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | console.anthropic.com | Pay per use (~$0.05/search) |
-| `TFL_APP_KEY` | api.tfl.gov.uk | Free |
-| `SUPABASE_URL` + `SUPABASE_KEY` | Your Supabase project dashboard | Free tier |
-
-All other APIs (UK Police, OpenStreetMap/Overpass, ONS, postcodes.io) are free with no key required.
-
----
-
-## Project Structure
-
-```
-london-postcode-finder/
-├── agents/           # Orchestrator, synthesiser, context sub-agent
-├── tools/            # Knowledge loader and writer
-├── scorers/          # 5 core scoring functions (pure Python)
-├── prompts/          # Orchestrator and synthesiser prompt files (.md)
-├── api/              # FastAPI app
-├── frontend/         # Next.js app
-├── supabase/
-│   └── migrations/   # All database schema changes — never edit DB directly
-├── tests/
-├── config.py         # Postcode districts, scoring dimensions
-└── .env.example      # Required environment variables (no real keys)
-```
-
----
-
-## Development Workflow
-
-```bash
-# Start from dev, always pull first
-git checkout dev && git pull origin dev
-git checkout -b feature/US-XXX-description
-
-# Build
-claude  # Claude Code for implementation
-
-# Commit with issue reference
-git add .
-git commit -m "feat: description (closes #N)"
-
-# PR to dev (never directly to main)
-git push origin feature/US-XXX-description
-gh pr create --base dev --title "US-XXX: Title" --body "Closes #N"
-gh pr merge --squash --delete-branch
-```
-
-**Branch rules:**
-- `main` — production only, never commit directly
-- `dev` — integration, all PRs land here first
-- `feature/*` — one branch per user story
-
-**Database rules:**
-- Every schema change is a migration file in `/supabase/migrations/`
-- Never edit the database via the Studio dashboard
-- `supabase db reset` applies all migrations locally
-- `supabase db push` applies pending migrations to production
-
----
-
-## Milestones
-
-| Milestone | What gets built |
+| Command | What it does |
 |---|---|
-| 0 — Foundation | Repo, Supabase, Vercel wired up |
-| 1 — Data | All 5 scorers working independently |
-| 2 — Agents | LangGraph pipeline end-to-end, knowledge base live |
-| 3 — API | FastAPI with streaming search endpoint |
-| 4 — Frontend | Next.js UI with sliders, context box, Redo/Start New |
-| 5 — V1 Launch | Production deployment, error handling |
-| 6 — V2 Auth | Login, user accounts, search history |
-| 7 — V3 Distillation | Automated knowledge distillation every 50 queries |
+| `python tools/seed_demo.py --yes` | 12 varied searches so learnings accumulate and distillation fires (~$2–3) |
+| `python tools/record_demo_run.py` | Records the fallback demo run into `api/demo/` and `frontend/public/` (~$0.20) |
+| `python agents/distiller.py [--force]` | Run a distillation from the command line |
+
+### Tests
+
+```bash
+python -m pytest tests/ -v                                  # unit + live scorer tests
+python -m pytest tests/test_api.py tests/test_distiller.py tests/test_context_sub_agent.py   # fast, no network
+RUN_E2E_TESTS=1 python -m pytest tests/test_pipeline_e2e.py # real Anthropic calls
+```
+
+The scorer tests call live public APIs (Police, Overpass, TfL) and can flake when those are overloaded.
 
 ---
 
-## Knowledge Export
+## Environment variables
 
-Once the system has run queries, you can export its accumulated intelligence:
+Backend: see [`.env.example`](.env.example) — every variable is commented. Frontend: see [`frontend/.env.example`](frontend/.env.example).
 
-```bash
-GET /knowledge/export
+| Backend | Required | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | yes | |
+| `SUPABASE_URL`, `SUPABASE_KEY` | yes | |
+| `TFL_APP_KEY` | for score refresh | |
+| `ADMIN_TOKEN` | recommended | manual distillation; bypasses rate limits |
+| `CRON_SECRET` | for monthly refresh | must match Vercel |
+| `FRONTEND_ORIGIN` | in production | comma-separated CORS origins |
+| `RATE_LIMIT_PER_HOUR`, `DAILY_SEARCH_CAP`, `DISTILL_EVERY_N` | no | defaults 5 / 100 / 10 |
+
+| Frontend | Notes |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | public backend URL, called from the browser |
+| `BACKEND_URL`, `CRON_SECRET` | server-only, used by the cron proxy route |
+
+---
+
+## Deploy
+
+Backend on Railway from the repo root (`Dockerfile`, `railway.json`, health check `/api/health`); frontend on Vercel with root directory `frontend` (`frontend/vercel.json` holds the monthly cron). The exact click-by-click checklist is in [`MANUAL_STEPS.md`](MANUAL_STEPS.md).
+
+---
+
+## Project structure
+
+```
+agents/      orchestrator + graph, context sub-agent, knowledge loader/writer, distiller
+api/         FastAPI app, SSE event mapping, rate limiter, recorded demo run
+scorers/     5 deterministic scorers (live fetch + cached read)
+tools/       postcodes.io, Supabase client, spawn cache, precompute, seed + record scripts
+prompts/     orchestrator, synthesiser, distiller system prompts
+supabase/    migrations — every schema change is a migration
+frontend/    Next.js app
+tests/       pytest
 ```
 
-Returns a `knowledge.md` file containing the current distilled brain plus all raw learnings. Portable — use it as a starting-point system prompt for other projects in the same domain.
+Development workflow and branch rules: `feature/*` → PR to `dev` → PR to `main`. See `PROJECT.md` for the full plan and backlog.

@@ -1,0 +1,1602 @@
+[
+{
+"district": "BR1",
+"dimension": "crime",
+"raw_value": 458,
+"score": 0.949877,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "BR3",
+"dimension": "crime",
+"raw_value": 251,
+"score": 0.983784,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "CR0",
+"dimension": "crime",
+"raw_value": 528,
+"score": 0.938411,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "DA1",
+"dimension": "crime",
+"raw_value": 394,
+"score": 0.96036,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "E1",
+"dimension": "crime",
+"raw_value": 2170,
+"score": 0.669451,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "E11",
+"dimension": "crime",
+"raw_value": 607,
+"score": 0.925471,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "E17",
+"dimension": "crime",
+"raw_value": 991,
+"score": 0.862572,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "E2",
+"dimension": "crime",
+"raw_value": 2082,
+"score": 0.683866,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "EC1A",
+"dimension": "crime",
+"raw_value": 2488,
+"score": 0.617363,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "EN1",
+"dimension": "crime",
+"raw_value": 631,
+"score": 0.92154,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "HA1",
+"dimension": "crime",
+"raw_value": 585,
+"score": 0.929075,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "IG1",
+"dimension": "crime",
+"raw_value": 1006,
+"score": 0.860115,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "KT1",
+"dimension": "crime",
+"raw_value": 585,
+"score": 0.929075,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "N1",
+"dimension": "crime",
+"raw_value": 1688,
+"score": 0.748403,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "N13",
+"dimension": "crime",
+"raw_value": 364,
+"score": 0.965274,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "N21",
+"dimension": "crime",
+"raw_value": 152,
+"score": 1.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "N4",
+"dimension": "crime",
+"raw_value": 1153,
+"score": 0.836036,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "NW1",
+"dimension": "crime",
+"raw_value": 1863,
+"score": 0.719738,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "NW3",
+"dimension": "crime",
+"raw_value": 825,
+"score": 0.889762,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "NW6",
+"dimension": "crime",
+"raw_value": 1213,
+"score": 0.826208,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "NW9",
+"dimension": "crime",
+"raw_value": 592,
+"score": 0.927928,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "RM1",
+"dimension": "crime",
+"raw_value": 512,
+"score": 0.941032,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SE1",
+"dimension": "crime",
+"raw_value": 2513,
+"score": 0.613268,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SE18",
+"dimension": "crime",
+"raw_value": 728,
+"score": 0.905651,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SE5",
+"dimension": "crime",
+"raw_value": 1238,
+"score": 0.822113,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SE9",
+"dimension": "crime",
+"raw_value": 285,
+"score": 0.978215,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SM1",
+"dimension": "crime",
+"raw_value": 456,
+"score": 0.950205,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SW16",
+"dimension": "crime",
+"raw_value": 559,
+"score": 0.933333,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SW19",
+"dimension": "crime",
+"raw_value": 306,
+"score": 0.974775,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SW1A",
+"dimension": "crime",
+"raw_value": 6257,
+"score": 0.885668,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "SW4",
+"dimension": "crime",
+"raw_value": 1211,
+"score": 0.826536,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "SW8",
+"dimension": "crime",
+"raw_value": 1324,
+"score": 0.808026,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "TW1",
+"dimension": "crime",
+"raw_value": 268,
+"score": 0.980999,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "UB1",
+"dimension": "crime",
+"raw_value": 651,
+"score": 0.918264,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "W13",
+"dimension": "crime",
+"raw_value": 618,
+"score": 0.923669,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "W1A",
+"dimension": "crime",
+"raw_value": 3202,
+"score": 0.50041,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "W2",
+"dimension": "crime",
+"raw_value": 1816,
+"score": 0.727437,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "W5",
+"dimension": "crime",
+"raw_value": 502,
+"score": 0.94267,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "W6",
+"dimension": "crime",
+"raw_value": 1039,
+"score": 0.854709,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "WC1A",
+"dimension": "crime",
+"raw_value": 5851,
+"score": 0.066503,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:33:09.571247+00:00"
+},
+{
+"district": "BR1",
+"dimension": "green",
+"raw_value": 8,
+"score": 0.018519,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "BR3",
+"dimension": "green",
+"raw_value": 11,
+"score": 0.037037,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "CR0",
+"dimension": "green",
+"raw_value": 5,
+"score": 0.256568,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "DA1",
+"dimension": "green",
+"raw_value": 36,
+"score": 0.191358,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "E1",
+"dimension": "green",
+"raw_value": 167,
+"score": 1.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "E11",
+"dimension": "green",
+"raw_value": 128,
+"score": 0.759259,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "E17",
+"dimension": "green",
+"raw_value": 43,
+"score": 0.234568,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "E2",
+"dimension": "green",
+"raw_value": 129,
+"score": 0.765432,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "EC1A",
+"dimension": "green",
+"raw_value": 43,
+"score": 0.234568,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "EN1",
+"dimension": "green",
+"raw_value": 9,
+"score": 0.024691,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "HA1",
+"dimension": "green",
+"raw_value": 6,
+"score": 0.006173,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "IG1",
+"dimension": "green",
+"raw_value": 21,
+"score": 0.098765,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "KT1",
+"dimension": "green",
+"raw_value": 23,
+"score": 0.111111,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "N1",
+"dimension": "green",
+"raw_value": 35,
+"score": 0.185185,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "N13",
+"dimension": "green",
+"raw_value": 15,
+"score": 0.061728,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "N21",
+"dimension": "green",
+"raw_value": 15,
+"score": 0.061728,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "N4",
+"dimension": "green",
+"raw_value": 146,
+"score": 0.87037,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "NW1",
+"dimension": "green",
+"raw_value": 67,
+"score": 0.382716,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "NW3",
+"dimension": "green",
+"raw_value": 32,
+"score": 0.166667,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "NW6",
+"dimension": "green",
+"raw_value": 42,
+"score": 0.228395,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "NW9",
+"dimension": "green",
+"raw_value": 65,
+"score": 0.37037,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "RM1",
+"dimension": "green",
+"raw_value": 15,
+"score": 0.061728,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SE1",
+"dimension": "green",
+"raw_value": 46,
+"score": 0.253086,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SE18",
+"dimension": "green",
+"raw_value": 59,
+"score": 0.333333,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SE5",
+"dimension": "green",
+"raw_value": 86,
+"score": 0.5,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SE9",
+"dimension": "green",
+"raw_value": 30,
+"score": 0.154321,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SM1",
+"dimension": "green",
+"raw_value": 44,
+"score": 0.240741,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SW16",
+"dimension": "green",
+"raw_value": 44,
+"score": 0.240741,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SW19",
+"dimension": "green",
+"raw_value": 14,
+"score": 0.055556,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SW1A",
+"dimension": "green",
+"raw_value": 105,
+"score": 0.617284,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SW4",
+"dimension": "green",
+"raw_value": 43,
+"score": 0.234568,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "SW8",
+"dimension": "green",
+"raw_value": 55,
+"score": 0.308642,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "TW1",
+"dimension": "green",
+"raw_value": 23,
+"score": 0.111111,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "UB1",
+"dimension": "green",
+"raw_value": 25,
+"score": 0.123457,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "W13",
+"dimension": "green",
+"raw_value": 9,
+"score": 0.024691,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "W1A",
+"dimension": "green",
+"raw_value": 49,
+"score": 0.271605,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "W2",
+"dimension": "green",
+"raw_value": 22,
+"score": 0.104938,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "W5",
+"dimension": "green",
+"raw_value": 20,
+"score": 0.092593,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "W6",
+"dimension": "green",
+"raw_value": 54,
+"score": 0.302469,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "WC1A",
+"dimension": "green",
+"raw_value": 32,
+"score": 0.166667,
+"needs_retry": false,
+"last_updated": "2026-04-15T22:55:28.497113+00:00"
+},
+{
+"district": "BR1",
+"dimension": "nightlife",
+"raw_value": 31,
+"score": 0.095092,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "BR3",
+"dimension": "nightlife",
+"raw_value": 40,
+"score": 0.122699,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "CR0",
+"dimension": "nightlife",
+"raw_value": 2,
+"score": 0.006135,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "DA1",
+"dimension": "nightlife",
+"raw_value": 25,
+"score": 0.076687,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "E1",
+"dimension": "nightlife",
+"raw_value": 60,
+"score": 0.184049,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "E11",
+"dimension": "nightlife",
+"raw_value": 31,
+"score": 0.095092,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "E17",
+"dimension": "nightlife",
+"raw_value": 48,
+"score": 0.147239,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "E2",
+"dimension": "nightlife",
+"raw_value": 75,
+"score": 0.230061,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "EC1A",
+"dimension": "nightlife",
+"raw_value": 269,
+"score": 0.825153,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "EN1",
+"dimension": "nightlife",
+"raw_value": 7,
+"score": 0.021472,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:19:10.342634+00:00"
+},
+{
+"district": "HA1",
+"dimension": "nightlife",
+"raw_value": 39,
+"score": 0.119632,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "IG1",
+"dimension": "nightlife",
+"raw_value": 37,
+"score": 0.113497,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "KT1",
+"dimension": "nightlife",
+"raw_value": 67,
+"score": 0.205521,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "N1",
+"dimension": "nightlife",
+"raw_value": 134,
+"score": 0.411043,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "N13",
+"dimension": "nightlife",
+"raw_value": 12,
+"score": 0.03681,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "N21",
+"dimension": "nightlife",
+"raw_value": 28,
+"score": 0.08589,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:18:09.247944+00:00"
+},
+{
+"district": "N4",
+"dimension": "nightlife",
+"raw_value": 56,
+"score": 0.171779,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:15:40.320861+00:00"
+},
+{
+"district": "NW1",
+"dimension": "nightlife",
+"raw_value": 98,
+"score": 0.300613,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "NW3",
+"dimension": "nightlife",
+"raw_value": 63,
+"score": 0.193252,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "NW6",
+"dimension": "nightlife",
+"raw_value": 58,
+"score": 0.177914,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "NW9",
+"dimension": "nightlife",
+"raw_value": 3,
+"score": 0.009202,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "RM1",
+"dimension": "nightlife",
+"raw_value": 18,
+"score": 0.055215,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:21:31.888545+00:00"
+},
+{
+"district": "SE1",
+"dimension": "nightlife",
+"raw_value": 180,
+"score": 0.552147,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SE18",
+"dimension": "nightlife",
+"raw_value": 20,
+"score": 0.06135,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SE5",
+"dimension": "nightlife",
+"raw_value": 56,
+"score": 0.171779,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SE9",
+"dimension": "nightlife",
+"raw_value": 18,
+"score": 0.055215,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SM1",
+"dimension": "nightlife",
+"raw_value": 36,
+"score": 0.104938,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:26:40.699712+00:00"
+},
+{
+"district": "SW16",
+"dimension": "nightlife",
+"raw_value": 8,
+"score": 0.02454,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SW19",
+"dimension": "nightlife",
+"raw_value": 44,
+"score": 0.134969,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SW1A",
+"dimension": "nightlife",
+"raw_value": 326,
+"score": 1.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SW4",
+"dimension": "nightlife",
+"raw_value": 78,
+"score": 0.239264,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "SW8",
+"dimension": "nightlife",
+"raw_value": 39,
+"score": 0.119632,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "TW1",
+"dimension": "nightlife",
+"raw_value": 57,
+"score": 0.174847,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "UB1",
+"dimension": "nightlife",
+"raw_value": 24,
+"score": 0.07362,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "W13",
+"dimension": "nightlife",
+"raw_value": 39,
+"score": 0.119632,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "W1A",
+"dimension": "nightlife",
+"raw_value": 199,
+"score": 0.610429,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "W2",
+"dimension": "nightlife",
+"raw_value": 145,
+"score": 0.444785,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "W5",
+"dimension": "nightlife",
+"raw_value": 62,
+"score": 0.190184,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "W6",
+"dimension": "nightlife",
+"raw_value": 80,
+"score": 0.245399,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:17:04.601742+00:00"
+},
+{
+"district": "WC1A",
+"dimension": "nightlife",
+"raw_value": 302,
+"score": 0.92638,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:20.693458+00:00"
+},
+{
+"district": "BR1",
+"dimension": "rent",
+"raw_value": 1658.0,
+"score": 0.927527,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "BR3",
+"dimension": "rent",
+"raw_value": 1658.0,
+"score": 0.927527,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "CR0",
+"dimension": "rent",
+"raw_value": 1553.0,
+"score": 0.991474,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "DA1",
+"dimension": "rent",
+"raw_value": 1539.0,
+"score": 1.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "E1",
+"dimension": "rent",
+"raw_value": 2389.0,
+"score": 0.482339,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "E11",
+"dimension": "rent",
+"raw_value": 1743.0,
+"score": 0.875761,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "E17",
+"dimension": "rent",
+"raw_value": 1743.0,
+"score": 0.875761,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "E2",
+"dimension": "rent",
+"raw_value": 2389.0,
+"score": 0.482339,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "EC1A",
+"dimension": "rent",
+"raw_value": 3181.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "EN1",
+"dimension": "rent",
+"raw_value": 1760.0,
+"score": 0.865408,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "HA1",
+"dimension": "rent",
+"raw_value": 1750.0,
+"score": 0.871498,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "IG1",
+"dimension": "rent",
+"raw_value": 1714.0,
+"score": 0.893423,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "KT1",
+"dimension": "rent",
+"raw_value": 1821.0,
+"score": 0.828258,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "N1",
+"dimension": "rent",
+"raw_value": 2713.0,
+"score": 0.285018,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "N13",
+"dimension": "rent",
+"raw_value": 1760.0,
+"score": 0.865408,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "N21",
+"dimension": "rent",
+"raw_value": 1760.0,
+"score": 0.865408,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "N4",
+"dimension": "rent",
+"raw_value": 2197.0,
+"score": 0.599269,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "NW1",
+"dimension": "rent",
+"raw_value": 2614.0,
+"score": 0.345311,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "NW3",
+"dimension": "rent",
+"raw_value": 2614.0,
+"score": 0.345311,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "NW6",
+"dimension": "rent",
+"raw_value": 2614.0,
+"score": 0.345311,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "NW9",
+"dimension": "rent",
+"raw_value": 1933.0,
+"score": 0.760049,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "RM1",
+"dimension": "rent",
+"raw_value": 1561.0,
+"score": 0.986602,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SE1",
+"dimension": "rent",
+"raw_value": 2387.0,
+"score": 0.483557,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SE18",
+"dimension": "rent",
+"raw_value": 1941.0,
+"score": 0.755177,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SE5",
+"dimension": "rent",
+"raw_value": 2387.0,
+"score": 0.483557,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SE9",
+"dimension": "rent",
+"raw_value": 1941.0,
+"score": 0.755177,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SM1",
+"dimension": "rent",
+"raw_value": 1542.0,
+"score": 0.998173,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SW16",
+"dimension": "rent",
+"raw_value": 2520.0,
+"score": 0.402558,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SW19",
+"dimension": "rent",
+"raw_value": 2080.0,
+"score": 0.670524,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SW1A",
+"dimension": "rent",
+"raw_value": 3181.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "SW4",
+"dimension": "rent",
+"raw_value": 2520.0,
+"score": 0.402558,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "SW8",
+"dimension": "rent",
+"raw_value": 2520.0,
+"score": 0.402558,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "TW1",
+"dimension": "rent",
+"raw_value": 2254.0,
+"score": 0.564555,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "UB1",
+"dimension": "rent",
+"raw_value": 2051.0,
+"score": 0.688185,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "W13",
+"dimension": "rent",
+"raw_value": 2051.0,
+"score": 0.688185,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "W1A",
+"dimension": "rent",
+"raw_value": 3181.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "W2",
+"dimension": "rent",
+"raw_value": 3181.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:27:41.847825+00:00"
+},
+{
+"district": "W5",
+"dimension": "rent",
+"raw_value": 2051.0,
+"score": 0.688185,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "W6",
+"dimension": "rent",
+"raw_value": 2687.0,
+"score": 0.300853,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "WC1A",
+"dimension": "rent",
+"raw_value": 2614.0,
+"score": 0.345311,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:39.130789+00:00"
+},
+{
+"district": "BR1",
+"dimension": "transport",
+"raw_value": 1.4,
+"score": 0.085366,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "BR3",
+"dimension": "transport",
+"raw_value": 1.0,
+"score": 0.060976,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "CR0",
+"dimension": "transport",
+"raw_value": 1.4,
+"score": 0.085366,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "DA1",
+"dimension": "transport",
+"raw_value": 3.4,
+"score": 0.207317,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "E1",
+"dimension": "transport",
+"raw_value": 6.6,
+"score": 0.402439,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "E11",
+"dimension": "transport",
+"raw_value": 2.0,
+"score": 0.121951,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "E17",
+"dimension": "transport",
+"raw_value": 3.0,
+"score": 0.182927,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "E2",
+"dimension": "transport",
+"raw_value": 3.0,
+"score": 0.182927,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "EC1A",
+"dimension": "transport",
+"raw_value": 6.4,
+"score": 0.390244,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "EN1",
+"dimension": "transport",
+"raw_value": 0.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "HA1",
+"dimension": "transport",
+"raw_value": 15.6,
+"score": 0.95122,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "IG1",
+"dimension": "transport",
+"raw_value": 1.6,
+"score": 0.097561,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "KT1",
+"dimension": "transport",
+"raw_value": 16.4,
+"score": 1.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "N1",
+"dimension": "transport",
+"raw_value": 1.0,
+"score": 0.060976,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "N13",
+"dimension": "transport",
+"raw_value": 1.6,
+"score": 0.097561,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "N21",
+"dimension": "transport",
+"raw_value": 2.0,
+"score": 0.121951,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "N4",
+"dimension": "transport",
+"raw_value": 3.6,
+"score": 0.219512,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "NW1",
+"dimension": "transport",
+"raw_value": 4.8,
+"score": 0.292683,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "NW3",
+"dimension": "transport",
+"raw_value": 4.4,
+"score": 0.268293,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "NW6",
+"dimension": "transport",
+"raw_value": 5.4,
+"score": 0.329268,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "NW9",
+"dimension": "transport",
+"raw_value": 0.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "RM1",
+"dimension": "transport",
+"raw_value": 2.2,
+"score": 0.134146,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SE1",
+"dimension": "transport",
+"raw_value": 9.2,
+"score": 0.560976,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SE18",
+"dimension": "transport",
+"raw_value": 2.6,
+"score": 0.158537,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SE5",
+"dimension": "transport",
+"raw_value": 2.2,
+"score": 0.134146,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SE9",
+"dimension": "transport",
+"raw_value": 1.0,
+"score": 0.060976,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SM1",
+"dimension": "transport",
+"raw_value": 0.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SW16",
+"dimension": "transport",
+"raw_value": 2.0,
+"score": 0.121951,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SW19",
+"dimension": "transport",
+"raw_value": 3.0,
+"score": 0.182927,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SW1A",
+"dimension": "transport",
+"raw_value": 6.6,
+"score": 0.402439,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SW4",
+"dimension": "transport",
+"raw_value": 2.4,
+"score": 0.146341,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "SW8",
+"dimension": "transport",
+"raw_value": 2.0,
+"score": 0.121951,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "TW1",
+"dimension": "transport",
+"raw_value": 1.4,
+"score": 0.085366,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "UB1",
+"dimension": "transport",
+"raw_value": 0.0,
+"score": 0.0,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "W13",
+"dimension": "transport",
+"raw_value": 2.0,
+"score": 0.121951,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "W1A",
+"dimension": "transport",
+"raw_value": 5.2,
+"score": 0.317073,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "W2",
+"dimension": "transport",
+"raw_value": 8.0,
+"score": 0.487805,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "W5",
+"dimension": "transport",
+"raw_value": 3.2,
+"score": 0.195122,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "W6",
+"dimension": "transport",
+"raw_value": 16.0,
+"score": 0.97561,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+},
+{
+"district": "WC1A",
+"dimension": "transport",
+"raw_value": 2.4,
+"score": 0.146341,
+"needs_retry": false,
+"last_updated": "2026-04-15T23:14:38.774229+00:00"
+}
+]

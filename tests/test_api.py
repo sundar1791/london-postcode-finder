@@ -182,6 +182,15 @@ def test_admin_token_bypasses_rate_limit(client, monkeypatch):
     assert r.status_code == 200
 
 
+def test_spoofed_forwarded_for_prefix_does_not_bypass_limit(client, monkeypatch):
+    monkeypatch.setattr(main, "limiter", RateLimiter(per_hour=1, daily_cap=100))
+    assert client.post("/api/search", json={"token_allocation": BALANCED},
+                       headers={"X-Forwarded-For": "1.1.1.1, 7.7.7.7"}).status_code == 200
+    r = client.post("/api/search", json={"token_allocation": BALANCED},
+                    headers={"X-Forwarded-For": "2.2.2.2, 7.7.7.7"})
+    assert r.status_code == 429
+
+
 def test_rate_limiter_window_expires():
     now = [1_000_000.0]
     limiter = RateLimiter(per_hour=1, daily_cap=100, clock=lambda: now[0])

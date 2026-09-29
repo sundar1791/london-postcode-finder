@@ -96,9 +96,14 @@ class SearchRequest(BaseModel):
 
 
 def _client_ip(request: Request) -> str:
+    # The platform proxy sets X-Real-IP / appends to X-Forwarded-For; the first
+    # X-Forwarded-For entry is client-supplied and spoofable, so use the last.
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 
