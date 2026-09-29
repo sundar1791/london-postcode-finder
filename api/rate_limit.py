@@ -57,7 +57,7 @@ class RateLimiter:
             while hits and now - hits[0] > 3600:
                 hits.popleft()
             if len(hits) >= self.per_hour:
-                retry_after = int(3600 - (now - hits[0])) + 1
+                retry_after = int(3600 - (now - hits[0])) + 1 if hits else 3600
                 return {
                     "error": "rate_limited",
                     "message": f"You've run {self.per_hour} searches in the last hour. "

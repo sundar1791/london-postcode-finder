@@ -191,6 +191,10 @@ def test_spoofed_forwarded_for_prefix_does_not_bypass_limit(client, monkeypatch)
     assert r.status_code == 429
 
 
+def test_rate_limiter_zero_limit_blocks_cleanly():
+    assert RateLimiter(per_hour=0, daily_cap=100).check_and_record("ip")["error"] == "rate_limited"
+
+
 def test_rate_limiter_window_expires():
     now = [1_000_000.0]
     limiter = RateLimiter(per_hour=1, daily_cap=100, clock=lambda: now[0])
