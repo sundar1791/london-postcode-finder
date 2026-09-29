@@ -356,6 +356,46 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
         return {"qualitative_insights": {district: fallback}}
 
 
+_SYNTHESISER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "rank": {"type": "integer"},
+                    "district": {"type": "string"},
+                    "verdict": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "tradeoff": {"type": "string"},
+                    "tip": {"type": "string"},
+                },
+                "required": ["rank", "district", "verdict", "rationale", "tradeoff", "tip"],
+                "additionalProperties": False,
+            },
+        },
+        "new_learnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["context_methodology", "token_pattern", "synthesiser_insight"],
+                    },
+                    "content": {"type": "string"},
+                },
+                "required": ["category", "content"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["recommendations", "new_learnings"],
+    "additionalProperties": False,
+}
+
+
 async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
     with open(os.path.join(_PROMPTS_DIR, "synthesiser_pass2.md"), "r") as f:
         system_prompt = f.read()
@@ -391,6 +431,7 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
         response = client.messages.create(
             model=SONNET_MODEL,
             max_tokens=SYNTHESISER_MAX_TOKENS,
+            output_config={"format": {"type": "json_schema", "schema": _SYNTHESISER_SCHEMA}},
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )

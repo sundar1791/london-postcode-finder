@@ -21,6 +21,17 @@ _PROMPT_PATH = os.path.join(
 )
 
 
+_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "distilled_brain": {"type": "string"},
+        "change_summary": {"type": "string"},
+    },
+    "required": ["distilled_brain", "change_summary"],
+    "additionalProperties": False,
+}
+
+
 def should_distil(query_count: int, every_n: Optional[int] = None) -> bool:
     n = every_n if every_n is not None else DISTILL_EVERY_N
     return n > 0 and query_count > 0 and query_count % n == 0
@@ -52,7 +63,10 @@ def _call_claude(client, user_message: str) -> dict:
     response = client.messages.create(
         model=SONNET_MODEL,
         max_tokens=DISTILLER_MAX_TOKENS,
-        output_config={"effort": DISTILLER_EFFORT},
+        output_config={
+            "effort": DISTILLER_EFFORT,
+            "format": {"type": "json_schema", "schema": _OUTPUT_SCHEMA},
+        },
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
