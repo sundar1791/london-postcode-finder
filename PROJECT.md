@@ -73,11 +73,16 @@ User submits token allocation (100 tokens) + optional context text (≤500 chars
     [Knowledge Writer]
     Inserts new_learnings rows into learnings table
     Increments query_count in agent_config
-    If query_count % 50 == 0: trigger distillation (async, non-blocking)
+    If query_count % DISTILL_EVERY_N == 0 (default 10): distillation runs
+    as a background task after the response has been sent
+              ↓
+    [Distiller — Claude Sonnet]
+    Merges the brain with learnings since last_distilled into ≤12 heuristics,
+    records a distillation_history row; keeps the old brain on any failure
               ↓
     Results + search saved to Supabase
-    Response streamed to Next.js frontend
-    Frontend shows agent activity animation during both passes
+    Typed SSE events streamed to the Next.js frontend
+    Frontend draws each stage live as a transit-line timeline
 ```
 
 **Claude API usage per search:**
@@ -275,10 +280,10 @@ RAG is the right answer when the knowledge base is large and heterogeneous — t
 | LLM | Claude API (Sonnet) | Orchestrator, Research Agents, Synthesizer |
 | Web research | Claude API with web search enabled | Qualitative research pass — no third-party dependency |
 | Scorers | Pure Python + httpx | Deterministic DB lookups, no LLM needed |
-| Backend | FastAPI | Lightweight, async, Vercel-compatible |
-| Frontend | Next.js + Vercel AI SDK | Streaming responses, agent activity animation |
+| Backend | FastAPI (Docker on Railway) | Async, SSE streaming; a long-running container avoids serverless timeouts on 45–90s searches |
+| Frontend | Next.js (App Router) + Tailwind | Reads the SSE stream with fetch; agent activity timeline |
 | Database | Supabase (Postgres) | Free tier, CLI-managed, auth-ready for V2 |
-| Hosting | Vercel | Auto-deploy on merge to main, cron job support |
+| Hosting | Vercel (frontend + monthly cron) + Railway (backend) | Auto-deploy on merge to main |
 | Infra management | GitHub CLI + Supabase CLI + Vercel CLI | No dashboard clicks |
 
 ---
@@ -287,8 +292,9 @@ RAG is the right answer when the knowledge base is large and heterogeneous — t
 
 ```
 /scorers        ← 5 deterministic data pipelines (crime, green, nightlife, transport, rent)
-/agents         ← genuine decision-making components (orchestrator, research agents, context sub-agent)
-/tools          ← shared utilities (postcode.py, load_rent_data.py)
+/agents         ← genuine decision-making components (orchestrator, research agents, context sub-agent, distiller)
+/api            ← FastAPI app, SSE event mapping, rate limiter, recorded demo run
+/tools          ← shared utilities (postcode.py, db.py, spawn_cache.py, load_rent_data.py, precompute/seed/record scripts)
 /prompts        ← Claude system prompt .md files
 /data           ← ONS rent CSV and other static data
 /supabase       ← migrations and local config
@@ -376,7 +382,7 @@ supabase db push        # push to production
 | US-034 | Knowledge Loader — reads distilled_brain + last 10 raw learnings, compiles into knowledge_base markdown | Claude Code |
 | US-035 | Knowledge Writer — inserts new_learnings rows, increments query_count, triggers distillation at query_count % 50 | Claude Code |
 
-### Milestone 2.5 — Evals
+### Milestone 2.5 — Evals (US-043 ✅; US-044, US-045, US-048 deferred past v1)
 *Goal: Professional-grade evaluation framework covering all agent decision points.*
 
 | Issue | User Story | Notes |
@@ -386,28 +392,29 @@ supabase db push        # push to production
 | US-045 | Synthesizer recommendation eval — 5 fixed-score test cases, check top 5 recommendations are defensible and rationale references user's actual highest-weighted dimension, LLM-as-judge + structural checks | Manual + Claude Code |
 | US-048 | Research agent eval — 5 test cases with known postcode/dimension combinations, LLM-as-judge grading of qualitative insight quality against a rubric (specific, recent, actionable, references real sources) | Manual + Claude Code |
 
-### Milestone 3 — API Layer
+### Milestone 3 — API Layer ✅
 *Goal: Pipeline accessible via HTTP with streaming.*
 
-| Issue | User Story | Notes |
+| Issue | User Story | Status |
 |---|---|---|
-| US-018 | FastAPI app scaffold, health check endpoint | Claude Code |
-| US-019 | Search endpoint — accepts tokens + context_text, returns streaming response covering both passes | Claude Code |
-| US-020 | Supabase save — persists tokens, context_text, and results with session UUID | Claude Code |
-| US-021 | Knowledge export endpoint — GET /knowledge/export returns knowledge.md file | Claude Code |
+| US-018 | FastAPI app scaffold, health check endpoint | ✅ `/api/health` incl. DB check |
+| US-019 | Search endpoint — accepts tokens + context_text, returns streaming response covering both passes | ✅ SSE with typed per-stage events, 240s timeout, rate limit + daily cap |
+| US-020 | Supabase save — persists tokens, context_text, and results with session UUID | ✅ plus adjusted allocation, top 5, duration, status |
+| US-021 | Knowledge export endpoint — GET /knowledge/export returns knowledge.md file | ✅ `/api/knowledge` + `/api/knowledge/export` |
 
-### Milestone 4 — Frontend
+### Milestone 4 — Frontend ✅ (deploy pending — see MANUAL_STEPS.md)
 *Goal: A real browser UI with agent activity animation.*
 
-| Issue | User Story | Notes |
+| Issue | User Story | Status |
 |---|---|---|
-| US-022 | Next.js scaffold with Vercel AI SDK, deploy shell to Vercel | Claude Code |
-| US-023 | Token allocation UI — sliders enforcing 100 total + context textarea + 500 char counter | Claude Code |
-| US-024 | Streaming results UI — recommendations appear as Claude writes | Claude Code |
-| US-049 | Agent activity animation — visual display of pipeline activity during both passes. Shows real-time status: "Scoring all districts...", "Researching SE22...", "Researching SW1A..." etc. Makes the wait feel like something meaningful is happening | Claude Code |
-| US-025 | Redo button — repopulates last token allocation, clears context box | Claude Code |
-| US-026 | Start New button — resets all sliders to 0, clears context and results | Claude Code |
-| US-027 | Polish and mobile responsiveness | Claude Code |
+| US-022 | Next.js scaffold with Vercel AI SDK, deploy shell to Vercel | ✅ scaffold (plain fetch + SSE, no AI SDK needed); Vercel deploy is a manual step |
+| US-023 | Token allocation UI — sliders enforcing 100 total + context textarea + 500 char counter | ✅ plus presets and example chips |
+| US-024 | Streaming results UI — recommendations appear as Claude writes | ✅ stages stream live; recommendations arrive as one event at the end of pass 2 |
+| US-049 | Agent activity animation — visual display of pipeline activity during both passes | ✅ transit-line timeline with per-district research branches |
+| US-025 | Redo button — repopulates last token allocation, clears context box | ✅ |
+| US-026 | Start New button — resets all sliders to 0, clears context and results | ✅ |
+| US-027 | Polish and mobile responsiveness | ✅ light/dark, 390px wide and up |
+| — | `/learning` and `/how-it-works` pages, "Why these results" drawer, recorded-run fallback | ✅ added in the v1 live prototype build |
 
 ### Milestone 5 — V1 Production Release
 *Goal: Live, shareable, stable.*
@@ -429,14 +436,14 @@ supabase db push        # push to production
 | US-037 | History UI — display past searches per logged-in user | Claude Code |
 | US-038 | Frontend auth flow — login, logout, protected history | Claude Code |
 
-### Milestone 7 — V3: Distillation Engine
+### Milestone 7 — V3: Distillation Engine ✅ (US-041 deferred)
 *Goal: Agents get genuinely smarter over time through automated distillation.*
 
-| Issue | User Story | Notes |
+| Issue | User Story | Status |
 |---|---|---|
-| US-039 | Distillation prompt — Claude reads all learnings rows and writes compressed brain as structured markdown covering methodological rules, London domain knowledge, and user archetypes | Manual + Claude Code |
-| US-040 | Distillation trigger — async job called by Knowledge Writer every 50 queries, updates agent_config.distilled_brain and last_distilled | Claude Code |
-| US-041 | Distillation quality test — compare orchestrator decisions before and after distillation against a fixed set of test queries, assert improvement | Claude Code |
+| US-039 | Distillation prompt — Claude reads all learnings rows and writes compressed brain as structured markdown covering methodological rules, London domain knowledge, and user archetypes | ✅ `prompts/distiller.md` — ≤12 heuristics under three headings, merge/refine/retire |
+| US-040 | Distillation trigger — async job called by Knowledge Writer every 50 queries, updates agent_config.distilled_brain and last_distilled | ✅ every `DISTILL_EVERY_N` (default 10), background task after the response; manual `POST /api/admin/distill`; `distillation_history` table |
+| US-041 | Distillation quality test — compare orchestrator decisions before and after distillation against a fixed set of test queries, assert improvement | Deferred — unit tests cover the mechanics (mocked Claude), not quality |
 
 ---
 
@@ -476,3 +483,4 @@ supabase db push        # push to production
 | Post-Milestone 1 | Updated Claude API cost estimate to ~$0.15–0.20 per search including qualitative research pass |
 | Post-Milestone 1 | Added V2 notes section: scorer confidence flags, RAG upgrade path |
 | Post-Milestone 1 | Total user stories: 49 across 8 milestones (including Milestone 1.5 and 2.5) |
+| 2026-09-29 | **v1 live prototype** (`feature/v1-live-prototype`, per BUILD_SPEC.md). Milestones 3, 4 and 7 built: FastAPI + typed SSE stream, Next.js UI with live agent timeline, `/learning` and `/how-it-works`, distillation engine (every 10 queries, background, with history), spawn cache, per-IP rate limit + daily cap, recorded-run fallback, Dockerfile/railway.json, seed + record scripts. Overpass User-Agent fixed on green/nightlife scorers (#76); research agents bounded by a semaphore; Context Sub-Agent now makes one combined Overpass request for all 40 districts with a 90s budget. Distillation cadence changed from every 50 to every `DISTILL_EVERY_N` (default 10). Evals US-044/045/048 and US-041 deferred. Deployment steps in MANUAL_STEPS.md |

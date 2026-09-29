@@ -27,7 +27,7 @@ IGNORE — context is irrelevant, nonsensical, offensive, or unrelated to London
 living. Do nothing. Return original token weights unchanged.
 Examples: "I like pizza", "the sky is blue", empty string.
 
-ADJUST — contexns explicit emphasis that one or more existing dimensions 
+ADJUST — context contains explicit emphasis that one or more existing dimensions 
 matter more or less to this user. Recalculate the token allocation to reflect that 
 emphasis. The adjusted allocation must still sum to exactly 100. Reduce other 
 dimensions proportionally to compensate.
@@ -46,7 +46,7 @@ significantly. A small nudge (5-10 tokens) is sufficient — the synthesiser wil
 have the spawn scores available and can reason about the full picture. Do not make 
 large weight adjustments when a spawn is also being triggered.
 
-SPAWN — context requires data thaing scorer covers, OR contains a 
+SPAWN — context requires data that no existing scorer covers, OR contains a 
 qualitative preference that cannot be captured by adjusting existing weights. 
 When in doubt between ADJUST and SPAWN, always choose SPAWN.
 
@@ -67,7 +67,7 @@ Write a plain English instruction for the synthesiser telling it anything about 
 user's context that numbers alone cannot capture. This should be one or two sentences 
 maximum. It is not shown to the user — it is diagnostic context for the synthesiser.
 
-If context is empty or IGNORpty string.
+If context is empty or IGNORE, return an empty string.
 
 Examples:
 - "User wants parks with city views — favour green districts where this is plausible."
@@ -109,7 +109,8 @@ If a spawn is needed:
   "adjusted_allocation": { ... },
   "spawn": {
     "intent": "nursery within walking distance",
-    "overpass_query": "amenity=kindergart "web_search_fallback": false
+    "overpass_query": "amenity=kindergarten",
+    "web_search_fallback": false
   },
   "synthesiser_instruction": "User needs a nursery nearby — spawn scores added as extra dimension.",
   "reasoning": "User explicitly mentioned needing a nursery. No existing scorer covers this..."

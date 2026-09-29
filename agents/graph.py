@@ -9,10 +9,21 @@ import anthropic
 from anthropic.types import TextBlock
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config import (
+    HAIKU_MODEL,
+    ORCHESTRATOR_MAX_TOKENS,
+    RESEARCH_CONCURRENCY,
+    RESEARCH_MAX_TOKENS,
+    SONNET_MODEL,
+    SPAWN_TIMEOUT_SECONDS,
+    SYNTHESISER_MAX_TOKENS,
+)
+
+from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from agents.state import LondonSearchState, make_initial_state
@@ -34,6 +45,29 @@ async def knowledge_loader_node(state: LondonSearchState) -> dict:
         return {"knowledge_base": ""}
 
 
+class ModelUnavailableError(RuntimeError):
+    """The Anthropic account can't serve requests (out of credit, spend limit
+    reached, bad key). Every later model call would fail too, so stop early."""
+
+
+def is_account_error(exc: Exception) -> bool:
+    if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
+        return True
+    if isinstance(exc, anthropic.BadRequestError):
+        message = str(exc).lower()
+        return "credit balance" in message or "usage limit" in message
+    return False
+
+
+def _emit(event: dict) -> None:
+    # Surfaces per-district progress to astream(stream_mode="custom") consumers;
+    # a no-op under ainvoke.
+    try:
+        get_stream_writer()(event)
+    except Exception:
+        pass
+
+
 _PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts")
 
 
@@ -49,8 +83,8 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
     def _call_claude() -> str:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=1500,
+            model=SONNET_MODEL,
+            max_tokens=ORCHESTRATOR_MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -102,6 +136,8 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
     except ValueError:
         raise
     except Exception as exc:
+        if is_account_error(exc):
+            raise ModelUnavailableError(str(exc)) from exc
         logging.error("orchestrator_node: Claude call failed — %s", exc)
         return {
             "adjusted_allocation": state["token_allocation"],
@@ -116,14 +152,25 @@ async def context_sub_agent_node(state: LondonSearchState) -> dict:
     if not spawn:
         logging.info("context_sub_agent_node: no spawn detected — skipping")
         return {"spawn_scores": {}}
+    from tools.spawn_cache import cache_key, get_cached_scores, put_cached_scores
+    key = cache_key(spawn)
+    cached = await asyncio.get_event_loop().run_in_executor(None, get_cached_scores, key)
+    if cached:
+        logging.info("context_sub_agent_node: spawn cache hit for %s", key)
+        return {"spawn_scores": cached, "spawn_meta": {"from_cache": True, "cache_key": key}}
     logging.info("context_sub_agent_node: spawn detected — running context sub-agent")
     try:
-        result = await run_context_sub_agent(spawn)
+        result = await asyncio.wait_for(run_context_sub_agent(spawn), timeout=SPAWN_TIMEOUT_SECONDS)
         logging.info("context_sub_agent_node: completed — %d districts scored", len(result))
-        return {"spawn_scores": result}
+        if any(v > 0 for v in result.values()):
+            await asyncio.get_event_loop().run_in_executor(None, put_cached_scores, key, result)
+        return {"spawn_scores": result, "spawn_meta": {"from_cache": False, "cache_key": key}}
+    except asyncio.TimeoutError:
+        logging.error("context_sub_agent_node: timed out after %ds — continuing without spawn filter", SPAWN_TIMEOUT_SECONDS)
+        return {"spawn_scores": {}, "spawn_meta": {"from_cache": False, "cache_key": key, "timed_out": True}}
     except Exception as exc:
         logging.error("context_sub_agent_node: failed — %s", exc)
-        return {"spawn_scores": {}}
+        return {"spawn_scores": {}, "spawn_meta": {"from_cache": False, "cache_key": key}}
 
 
 async def crime_scorer_node(state: LondonSearchState) -> dict:
@@ -275,12 +322,13 @@ _RESEARCH_SYSTEM_PROMPT = (
 
 async def research_agent_node(state: LondonSearchState, district: str) -> dict:
     logging.info("research_agent_node: starting research for %s", district)
+    _emit({"event": "research_started", "district": district})
 
     def _call_claude() -> list:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
+            model=HAIKU_MODEL,
+            max_tokens=RESEARCH_MAX_TOKENS,
             system=_RESEARCH_SYSTEM_PROMPT,
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{
@@ -315,10 +363,53 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
                 logging.warning("research_agent_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
                 await asyncio.sleep(15)
         logging.info("research_agent_node: completed %s — %d insights", district, len(insights))
+        _emit({"event": "research_complete", "district": district, "insights": insights})
         return {"qualitative_insights": {district: insights}}
     except Exception as exc:
         logging.error("research_agent_node: failed for %s — %s", district, exc)
-        return {"qualitative_insights": {district: ["Research unavailable for this district."]}}
+        fallback = ["Research unavailable for this district."]
+        _emit({"event": "research_complete", "district": district, "insights": fallback, "failed": True})
+        return {"qualitative_insights": {district: fallback}}
+
+
+_SYNTHESISER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "rank": {"type": "integer"},
+                    "district": {"type": "string"},
+                    "verdict": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "tradeoff": {"type": "string"},
+                    "tip": {"type": "string"},
+                },
+                "required": ["rank", "district", "verdict", "rationale", "tradeoff", "tip"],
+                "additionalProperties": False,
+            },
+        },
+        "new_learnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["context_methodology", "token_pattern", "synthesiser_insight"],
+                    },
+                    "content": {"type": "string"},
+                },
+                "required": ["category", "content"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["recommendations", "new_learnings"],
+    "additionalProperties": False,
+}
 
 
 async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
@@ -354,8 +445,9 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
     def _call_claude() -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=8000,
+            model=SONNET_MODEL,
+            max_tokens=SYNTHESISER_MAX_TOKENS,
+            output_config={"format": {"type": "json_schema", "schema": _SYNTHESISER_SCHEMA}},
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -377,6 +469,12 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
                     raise
                 logging.warning("synthesiser_pass2_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
                 await asyncio.sleep(15)
+            except json.JSONDecodeError as exc:
+                # Occasionally the model emits malformed JSON (e.g. an unescaped quote);
+                # one fresh attempt almost always fixes it.
+                if _attempt >= 2:
+                    raise
+                logging.warning("synthesiser_pass2_node: malformed JSON (%s) — retrying once", exc)
         recommendations = parsed.get("recommendations", [])
         for rec in recommendations:
             logging.info(
@@ -404,6 +502,7 @@ async def knowledge_writer_node(state: LondonSearchState) -> dict:
             "knowledge_writer_node: wrote %d learnings, query_count=%d",
             result["learnings_written"], result["query_count"],
         )
+        return {"knowledge_result": result}
     except Exception as exc:
         logging.error("knowledge_writer_node: failed to persist knowledge — %s", exc)
     return {}
@@ -412,7 +511,13 @@ async def knowledge_writer_node(state: LondonSearchState) -> dict:
 async def research_agents_parallel_node(state: LondonSearchState) -> dict:
     districts = state.get("top_5_districts", [])
     logging.info("research_agents_parallel_node: starting parallel research for %s", districts)
-    results = await asyncio.gather(*[research_agent_node(state, d) for d in districts])
+    semaphore = asyncio.Semaphore(RESEARCH_CONCURRENCY)
+
+    async def _limited(district: str) -> dict:
+        async with semaphore:
+            return await research_agent_node(state, district)
+
+    results = await asyncio.gather(*[_limited(d) for d in districts])
     merged: dict = {}
     for r in results:
         merged.update(r.get("qualitative_insights", {}))
@@ -462,4 +567,7 @@ async def run_pipeline(
 ) -> LondonSearchState:
     initial_state = make_initial_state(token_allocation, context_text, session_id)
     result = await pipeline.ainvoke(initial_state)
+    if (result.get("knowledge_result") or {}).get("distillation_triggered"):
+        from agents.distiller import distil
+        await asyncio.get_event_loop().run_in_executor(None, distil)
     return result

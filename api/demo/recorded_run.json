@@ -1,0 +1,585 @@
+{
+ "recorded_at": "2026-09-29T19:11:58.794873+00:00",
+ "request": {
+  "token_allocation": {
+   "crime": 35,
+   "green": 30,
+   "nightlife": 0,
+   "transport": 15,
+   "rent": 20
+  },
+  "context_text": "I need a nursery nearby for my daughter"
+ },
+ "events": [
+  {
+   "event": "started",
+   "data": {
+    "session_id": "recorded-demo",
+    "timeout_seconds": 240
+   },
+   "t_ms": 217
+  },
+  {
+   "event": "knowledge_loaded",
+   "data": {
+    "chars": 3074,
+    "cold_start": false
+   },
+   "t_ms": 1198
+  },
+  {
+   "event": "orchestrator",
+   "data": {
+    "type": "spawn",
+    "reasoning": "The context specifies a concrete need (nursery access) that isn't captured by any of the five existing dimensions, so this requires a SPAWN via Overpass query for amenity=kindergarten. There's no explicit signal that an existing dimension like green or transport should be reweighted \u2014 the mention is purely about a missing data need, not a valuation statement \u2014 so token allocation remains unchanged.",
+    "original_allocation": {
+     "crime": 35,
+     "green": 30,
+     "nightlife": 0,
+     "transport": 15,
+     "rent": 20
+    },
+    "adjusted_allocation": {
+     "crime": 35,
+     "green": 30,
+     "nightlife": 0,
+     "transport": 15,
+     "rent": 20
+    },
+    "synthesiser_instruction": "User has a young daughter and needs a nursery nearby \u2014 spawn scores for nursery proximity have been added as a separate dimension and should factor into the final recommendation.",
+    "spawn": {
+     "intent": "nursery within walking distance for young daughter",
+     "overpass_query": "amenity=kindergarten",
+     "web_search_fallback": false
+    }
+   },
+   "t_ms": 9840
+  },
+  {
+   "event": "spawn_started",
+   "data": {
+    "intent": "nursery within walking distance for young daughter",
+    "overpass_query": "amenity=kindergarten",
+    "web_search_fallback": false
+   },
+   "t_ms": 9841
+  },
+  {
+   "event": "spawn_complete",
+   "data": {
+    "intent": "nursery within walking distance for young daughter",
+    "districts_matched": 22,
+    "districts_total": 40,
+    "from_cache": true,
+    "timed_out": false,
+    "failed": false
+   },
+   "t_ms": 9883
+  },
+  {
+   "event": "scorer_complete",
+   "data": {
+    "dimension": "green",
+    "districts": 40
+   },
+   "t_ms": 9904
+  },
+  {
+   "event": "scorer_complete",
+   "data": {
+    "dimension": "transport",
+    "districts": 40
+   },
+   "t_ms": 9908
+  },
+  {
+   "event": "scorer_complete",
+   "data": {
+    "dimension": "rent",
+    "districts": 40
+   },
+   "t_ms": 9908
+  },
+  {
+   "event": "scorer_complete",
+   "data": {
+    "dimension": "crime",
+    "districts": 40
+   },
+   "t_ms": 9910
+  },
+  {
+   "event": "scorer_complete",
+   "data": {
+    "dimension": "nightlife",
+    "districts": 40
+   },
+   "t_ms": 9912
+  },
+  {
+   "event": "scoring_complete",
+   "data": {
+    "top_10": [
+     {
+      "district": "E11",
+      "weighted_score": 0.7451,
+      "scores": {
+       "crime": 0.9255,
+       "green": 0.7593,
+       "nightlife": 0.0951,
+       "transport": 0.122,
+       "rent": 0.8758
+      }
+     },
+     {
+      "district": "N4",
+      "weighted_score": 0.7065,
+      "scores": {
+       "crime": 0.836,
+       "green": 0.8704,
+       "nightlife": 0.1718,
+       "transport": 0.2195,
+       "rent": 0.5993
+      }
+     },
+     {
+      "district": "E1",
+      "weighted_score": 0.6911,
+      "scores": {
+       "crime": 0.6695,
+       "green": 1.0,
+       "nightlife": 0.184,
+       "transport": 0.4024,
+       "rent": 0.4823
+      }
+     },
+     {
+      "district": "KT1",
+      "weighted_score": 0.6742,
+      "scores": {
+       "crime": 0.9291,
+       "green": 0.1111,
+       "nightlife": 0.2055,
+       "transport": 1.0,
+       "rent": 0.8283
+      }
+     },
+     {
+      "district": "HA1",
+      "weighted_score": 0.644,
+      "scores": {
+       "crime": 0.9291,
+       "green": 0.0062,
+       "nightlife": 0.1196,
+       "transport": 0.9512,
+       "rent": 0.8715
+      }
+     },
+     {
+      "district": "DA1",
+      "weighted_score": 0.6246,
+      "scores": {
+       "crime": 0.9604,
+       "green": 0.1914,
+       "nightlife": 0.0767,
+       "transport": 0.2073,
+       "rent": 1.0
+      }
+     },
+     {
+      "district": "CR0",
+      "weighted_score": 0.6165,
+      "scores": {
+       "crime": 0.9384,
+       "green": 0.2566,
+       "nightlife": 0.0061,
+       "transport": 0.0854,
+       "rent": 0.9915
+      }
+     },
+     {
+      "district": "SM1",
+      "weighted_score": 0.6044,
+      "scores": {
+       "crime": 0.9502,
+       "green": 0.2407,
+       "nightlife": 0.1049,
+       "transport": 0.0,
+       "rent": 0.9982
+      }
+     },
+     {
+      "district": "W6",
+      "weighted_score": 0.5964,
+      "scores": {
+       "crime": 0.8547,
+       "green": 0.3025,
+       "nightlife": 0.2454,
+       "transport": 0.9756,
+       "rent": 0.3009
+      }
+     },
+     {
+      "district": "E2",
+      "weighted_score": 0.5929,
+      "scores": {
+       "crime": 0.6839,
+       "green": 0.7654,
+       "nightlife": 0.2301,
+       "transport": 0.1829,
+       "rent": 0.4823
+      }
+     }
+    ],
+    "districts_scored": 40
+   },
+   "t_ms": 9913
+  },
+  {
+   "event": "shortlist",
+   "data": {
+    "top_5": [
+     {
+      "district": "E11",
+      "weighted_score": 0.7451
+     },
+     {
+      "district": "N4",
+      "weighted_score": 0.7065
+     },
+     {
+      "district": "E1",
+      "weighted_score": 0.6911
+     },
+     {
+      "district": "HA1",
+      "weighted_score": 0.644
+     },
+     {
+      "district": "DA1",
+      "weighted_score": 0.6246
+     }
+    ],
+    "removed_by_spawn_filter": [
+     {
+      "district": "KT1",
+      "weighted_score": 0.6742,
+      "spawn_score": 0.0
+     }
+    ],
+    "spawn_filter_applied": true
+   },
+   "t_ms": 9914
+  },
+  {
+   "event": "research_started",
+   "data": {
+    "district": "E11"
+   },
+   "t_ms": 9915
+  },
+  {
+   "event": "research_started",
+   "data": {
+    "district": "N4"
+   },
+   "t_ms": 9915
+  },
+  {
+   "event": "research_started",
+   "data": {
+    "district": "E1"
+   },
+   "t_ms": 9915
+  },
+  {
+   "event": "research_started",
+   "data": {
+    "district": "HA1"
+   },
+   "t_ms": 9915
+  },
+  {
+   "event": "research_started",
+   "data": {
+    "district": "DA1"
+   },
+   "t_ms": 9915
+  },
+  {
+   "event": "research_complete",
+   "data": {
+    "district": "DA1",
+    "insights": [
+     "I'll research DA1 for you, focusing on recent developments and local insights.Based on my research, here are 5 specific insights about DA1 (Dartford) that would matter to someone considering moving there:",
+     "## 1. **Vehicle Crime is a Significant Issue**",
+     "Vehicle crime is 168% of the national average in Dartford, which is notably higher than surrounding areas. This is a persistent concern that residents mention and worth factoring into your decision, particularly if you own a car.",
+     "## 2. **Strong Recent Population Growth**",
+     "The population of Dartford DA1 is increasing by 2% each year, significantly above the UK average growth rate. This reflects growing demand for the area, though it also means rising density and potentially more pressure on local services.",
+     "## 3. **Urban Core with Higher-Than-Average Density**",
+     "Population density is notably high at 4,819.8 people per sq km, compared to the England & Wales average of 394.6. Central postcodes like DA1 1EU and DA1 1NT are densely populated urban areas with mixed residential, commercial, and industrial zones\u2014so expect a bustling, busy environment rather than a quiet suburban feel.",
+     "## 4. **High Car Ownership, But Traffic Congestion Issues**",
+     "Residents of DA1 enjoy a relatively high level of car ownership, averaging 2.25 cars per household, compared to the UK average of 1.4. However, there is a lot of traffic congestion due to the M25, so despite owning cars, commuting can be slow.",
+     "## 5. **Property Prices Above UK Average, But Good Transport Access**",
+     "The average house price stands at \u00a3392,000, significantly higher than the UK average of \u00a3288,000. That said, the area is well-connected by public transport, including direct train services to London"
+    ]
+   },
+   "t_ms": 17915
+  },
+  {
+   "event": "research_complete",
+   "data": {
+    "district": "N4",
+    "insights": [
+     "I'll research N4 for you, focusing on recent developments and local insights.Based on my research, here are 5 specific, recent insights about N4 that would help your decision:",
+     "## 1. **Acute Housing Affordability Crisis**",
+     "Average rents in Islington (which covers N4) are \u00a32,053 for a one-bedroom flat and \u00a32,839 for a three-bedroom home, with first-time buyers facing an average spend of \u00a3607,000. This is substantially higher than most London areas and suggests N4 is experiencing significant rental price pressures despite being desirable.",
+     "## 2. **Planning Gridlock Limiting New Housing Supply**",
+     "Conservation areas blanket 50% of Islington, with 4,500 listed buildings stifling construction. A recent political shift has made this worse\u2014Islington Labour Council has accused the Green Party of hypocrisy in blocking new housing developments across the borough (as of February 2026). This means supply constraints that drive up rents are unlikely to ease soon.",
+     "## 3. **Drayton Park Station Development Opportunity**",
+     "The former marshalling yard at Drayton Park is being looked at as a rare unused piece of land in Islington, with its use for housing requiring improvements to Drayton Park station\u2014a second point of egress, via the bridge to the Emirates stadium, and a wider platform. This could bring housing and better transport connectivity, though it's still in early planning stages.",
+     "## 4. **Strong Green Space Investment Program**",
+     "Second round Greener Together projects include Wharfdale Road Pavement Greening, Marriott Road and Stonest Street Greener Together, Noel Road Green space, and Linton Street parklet development, with feasible projects due to be rolled out in the next 6-18 months. This shows the council"
+    ]
+   },
+   "t_ms": 17992
+  },
+  {
+   "event": "research_complete",
+   "data": {
+    "district": "E1",
+    "insights": [
+     "I'll research E1 to find recent, specific insights about this East London neighbourhood.Based on my research, here are 5 specific, recent insights about E1 that would help inform a decision about living there:",
+     "## 1. **Significant Development Activity Along Aldgate & Whitechapel**",
+     "British Land's Aldgate Place Phase 2 has recently completed as the first Build to Rent development, and Tower Hamlets has approved plans for a new world-class life sciences cluster development in Whitechapel. Additionally, the building work at the Harriott, Apsley & Pattison Houses site in Stepney E1 is set to commence in Summer 2025. This signals ongoing gentrification and investment but also means construction disruption for current residents.",
+     "## 2. **Crime Varies Significantly Across Micro-Neighbourhoods**",
+     "Crime in E1 is highly location-dependent. The Whitechapel High Street/Aldgate East area has very high crime levels, with around 295.0 crimes per 1,000 residents per year. However, the E1 1PB postcode (south towards Shadwell/Wapping) has high deprivation but moderate crime levels, with around 67.4 crimes per 1,000 residents per year. Your street matters significantly here.",
+     "## 3. **Transport Connectivity is Strong**",
+     "Aldgate East tube station on Whitechapel High Street is on the District and Hammersmith & City lines, and transport in the area is very good. Most E1 postcodes have multiple stations within walking distance. This is one of the area's genuine strengths.",
+     "## 4. **Population Growing Faster Than London Average**"
+    ]
+   },
+   "t_ms": 18186
+  },
+  {
+   "event": "research_complete",
+   "data": {
+    "district": "HA1",
+    "insights": [
+     "I'll research HA1 (Harrow) to find specific, recent insights about what it's really like to live there.Based on my research, here are **5 specific, recent insights** about HA1 (Harrow) that would genuinely help someone decide whether to live there:",
+     "## 1. **Major New Housing Development Just Completed (January 2025)**",
+     "Sheepcote Road on the former Kodak site reached practical completion in January 2025, delivering 149 new one-bed homes specifically for local first-time buyers. The development was designed by RIBA award-winning Threefold Architects and inspired by historic Metroland architecture. It's a car-free development, which signals the council's commitment to reducing car dependency. This is a tangible sign of regeneration actually happening on the ground.",
+     "## 2. **Affordable Housing Access\u2014But With Strict Eligibility**",
+     "For properties like Sheepcote Road, you must live or work in any London borough, not already own a home, and earn under \u00a390,000. This is important to note if you're hoping to tap into Harrow's \"affordable\" housing programs\u2014they're genuinely restricted. The development was designed with affordability in mind, but accessibility is limited.",
+     "## 3. **One of London's Safest Areas\u2014Ranked 3rd by Metropolitan Police**",
+     "According to Metropolitan Police statistics, Harrow ranks as the third safest area the force serves, following Richmond upon Thames and Kingston upon Thames. This isn't a vague claim\u2014it's a specific official ranking that stands out as a genuine advantage if safety is a priority.",
+     "## 4. **Current Rent (August 2026): \u00a32,217 Monthly Average**",
+     "As of August 2026, the average monthly rental payment in Harrow is \u00a32,217. This is notably higher than the \u00a31,800-\u00a32,"
+    ]
+   },
+   "t_ms": 18362
+  },
+  {
+   "event": "research_complete",
+   "data": {
+    "district": "E11",
+    "insights": [
+     "I'll research E11 (Walthamstow) to find recent, specific insights about the area.Based on my research, here are 5 specific, recent insights about E11 (Walthamstow) that would help someone decide whether to live there:",
+     "## 1. **Major Station Redevelopment & Transport Improvements**",
+     "Walthamstow Central station is getting a new step-free access to the Victoria line as part of a \u00a3200 million redevelopment of The Mall shopping centre, though TfL has a planning permission deadline of \"mid 2025\" for station entrance works. This means the area's main transport hub is actively improving, but there may still be some disruption during construction.",
+     "## 2. **Significant Student Housing Development Coming**",
+     "A 224-bed student accommodation scheme with 5,300 sq ft of commercial space is being funded in Walthamstow, set to be completed in 2026. This signals continued investment in the area but also suggests the neighbourhood may see increased student activity and nightlife.",
+     "## 3. **Rapid New Housing Growth**",
+     "The Skyline building, located opposite Walthamstow Central Station, has recently welcomed its first residents, and Feature 17 development will deliver 258 brand new homes including 146 with first completions in 2024. The area is being transformed with multiple major residential projects underway.",
+     "## 4. **Recently Named Best Place to Live in London**",
+     "Walthamstow has been crowned the best place to live in London for 2025 by The Sunday Times. The area is recognized for being \"creative, connected, and packed with opportunity.\"",
+     "## 5. **Upcoming New Play Area & Amenities**",
+     "A pre-school nursery with its own play area is being created close to Waltham"
+    ]
+   },
+   "t_ms": 18482
+  },
+  {
+   "event": "synthesis_complete",
+   "data": {
+    "recommendations": [
+     {
+      "rank": 1,
+      "district": "E11",
+      "verdict": "Right for a parent who wants a genuinely up-and-coming family area with green space and is willing to live through a bit of construction noise.",
+      "rationale": "Crime is your top priority (35 tokens) alongside green space (30), and while the research didn't surface hard crime statistics for E11, the area's momentum is real: Walthamstow was named The Sunday Times' Best Place to Live in London for 2025, described as 'creative, connected, and packed with opportunity,' and a pre-school nursery with its own play area is being built close to Walthamstow \u2014 directly relevant given your childcare need.",
+      "tradeoff": "The \u00a3200m Mall redevelopment and new student housing scheme (224 beds, completing 2026) mean construction disruption and a wave of new arrivals over the next couple of years, and crime figures themselves remain unverified in this research.",
+      "tip": "Contact Waltham Forest Council's nursery finder directly to check waiting lists for the new pre-school near Walthamstow Central before committing to a specific street.",
+      "weighted_score": 0.7451,
+      "scores": {
+       "crime": 0.9255,
+       "green": 0.7593,
+       "nightlife": 0.0951,
+       "transport": 0.122,
+       "rent": 0.8758
+      },
+      "spawn_score": 0.5,
+      "insights": [
+       "I'll research E11 (Walthamstow) to find recent, specific insights about the area.Based on my research, here are 5 specific, recent insights about E11 (Walthamstow) that would help someone decide whether to live there:",
+       "## 1. **Major Station Redevelopment & Transport Improvements**",
+       "Walthamstow Central station is getting a new step-free access to the Victoria line as part of a \u00a3200 million redevelopment of The Mall shopping centre, though TfL has a planning permission deadline of \"mid 2025\" for station entrance works. This means the area's main transport hub is actively improving, but there may still be some disruption during construction.",
+       "## 2. **Significant Student Housing Development Coming**",
+       "A 224-bed student accommodation scheme with 5,300 sq ft of commercial space is being funded in Walthamstow, set to be completed in 2026. This signals continued investment in the area but also suggests the neighbourhood may see increased student activity and nightlife.",
+       "## 3. **Rapid New Housing Growth**",
+       "The Skyline building, located opposite Walthamstow Central Station, has recently welcomed its first residents, and Feature 17 development will deliver 258 brand new homes including 146 with first completions in 2024. The area is being transformed with multiple major residential projects underway.",
+       "## 4. **Recently Named Best Place to Live in London**",
+       "Walthamstow has been crowned the best place to live in London for 2025 by The Sunday Times. The area is recognized for being \"creative, connected, and packed with opportunity.\"",
+       "## 5. **Upcoming New Play Area & Amenities**",
+       "A pre-school nursery with its own play area is being created close to Waltham"
+      ]
+     },
+     {
+      "rank": 2,
+      "district": "N4",
+      "verdict": "Right for someone prioritising green space investment who can absorb high rents and doesn't mind housing supply staying tight.",
+      "rationale": "Green space scored strongly here \u2014 N4 sits within Islington's 'Greener Together' programme, with feasible projects like Wharfdale Road Pavement Greening and Linton Street parklet rolling out in the next 6-18 months. On crime, though, no district-specific statistics were surfaced in this research, which is a gap given it's your single highest-weighted factor.",
+      "tradeoff": "Rents are steep \u2014 average one-bed flats run \u00a32,053/month and three-beds \u00a32,839, with first-time buyers spending \u00a3607,000 on average \u2014 and conservation area restrictions covering 50% of Islington mean this pressure isn't easing soon.",
+      "tip": "Check Islington Council's crime dashboard by street before viewing, since no verified crime figures were available in this research and rents here demand certainty.",
+      "weighted_score": 0.7065,
+      "scores": {
+       "crime": 0.836,
+       "green": 0.8704,
+       "nightlife": 0.1718,
+       "transport": 0.2195,
+       "rent": 0.5993
+      },
+      "spawn_score": 0.25,
+      "insights": [
+       "I'll research N4 for you, focusing on recent developments and local insights.Based on my research, here are 5 specific, recent insights about N4 that would help your decision:",
+       "## 1. **Acute Housing Affordability Crisis**",
+       "Average rents in Islington (which covers N4) are \u00a32,053 for a one-bedroom flat and \u00a32,839 for a three-bedroom home, with first-time buyers facing an average spend of \u00a3607,000. This is substantially higher than most London areas and suggests N4 is experiencing significant rental price pressures despite being desirable.",
+       "## 2. **Planning Gridlock Limiting New Housing Supply**",
+       "Conservation areas blanket 50% of Islington, with 4,500 listed buildings stifling construction. A recent political shift has made this worse\u2014Islington Labour Council has accused the Green Party of hypocrisy in blocking new housing developments across the borough (as of February 2026). This means supply constraints that drive up rents are unlikely to ease soon.",
+       "## 3. **Drayton Park Station Development Opportunity**",
+       "The former marshalling yard at Drayton Park is being looked at as a rare unused piece of land in Islington, with its use for housing requiring improvements to Drayton Park station\u2014a second point of egress, via the bridge to the Emirates stadium, and a wider platform. This could bring housing and better transport connectivity, though it's still in early planning stages.",
+       "## 4. **Strong Green Space Investment Program**",
+       "Second round Greener Together projects include Wharfdale Road Pavement Greening, Marriott Road and Stonest Street Greener Together, Noel Road Green space, and Linton Street parklet development, with feasible projects due to be rolled out in the next 6-18 months. This shows the council"
+      ]
+     },
+     {
+      "rank": 3,
+      "district": "E1",
+      "verdict": "Right for someone who wants strong transport and is prepared to be extremely picky about which specific street they live on.",
+      "rationale": "E1 is the one district here with real, granular crime data: Whitechapel High Street/Aldgate East sees around 295 crimes per 1,000 residents annually, while E1 1PB near Shadwell/Wapping sits at a much lower 67.4 per 1,000 \u2014 a huge swing that matters enormously given crime is your top-weighted dimension. Transport is also genuinely strong, with Aldgate East on the District and Hammersmith & City lines.",
+      "tradeoff": "The crime variation within E1 is so extreme that the postcode-level score masks real risk \u2014 this is not a district you can choose blind, and ongoing developments like Aldgate Place Phase 2 signal further gentrification-driven flux.",
+      "tip": "Use the Met Police's street-level crime map to compare Aldgate East against E1 1PB directly before choosing a street, and check Tower Hamlets' nursery availability given the area's fast population growth.",
+      "weighted_score": 0.6911,
+      "scores": {
+       "crime": 0.6695,
+       "green": 1.0,
+       "nightlife": 0.184,
+       "transport": 0.4024,
+       "rent": 0.4823
+      },
+      "spawn_score": 0.25,
+      "insights": [
+       "I'll research E1 to find recent, specific insights about this East London neighbourhood.Based on my research, here are 5 specific, recent insights about E1 that would help inform a decision about living there:",
+       "## 1. **Significant Development Activity Along Aldgate & Whitechapel**",
+       "British Land's Aldgate Place Phase 2 has recently completed as the first Build to Rent development, and Tower Hamlets has approved plans for a new world-class life sciences cluster development in Whitechapel. Additionally, the building work at the Harriott, Apsley & Pattison Houses site in Stepney E1 is set to commence in Summer 2025. This signals ongoing gentrification and investment but also means construction disruption for current residents.",
+       "## 2. **Crime Varies Significantly Across Micro-Neighbourhoods**",
+       "Crime in E1 is highly location-dependent. The Whitechapel High Street/Aldgate East area has very high crime levels, with around 295.0 crimes per 1,000 residents per year. However, the E1 1PB postcode (south towards Shadwell/Wapping) has high deprivation but moderate crime levels, with around 67.4 crimes per 1,000 residents per year. Your street matters significantly here.",
+       "## 3. **Transport Connectivity is Strong**",
+       "Aldgate East tube station on Whitechapel High Street is on the District and Hammersmith & City lines, and transport in the area is very good. Most E1 postcodes have multiple stations within walking distance. This is one of the area's genuine strengths.",
+       "## 4. **Population Growing Faster Than London Average**"
+      ]
+     },
+     {
+      "rank": 4,
+      "district": "HA1",
+      "verdict": "Right for a safety-first parent who can stretch to higher rent for genuine, officially-verified peace of mind.",
+      "rationale": "HA1 is the strongest match for your top priority: Harrow ranks 3rd safest area served by the Metropolitan Police, behind only Richmond and Kingston \u2014 a specific, credible statistic rather than a vague claim. The Sheepcote Road development (149 new one-bed homes, car-free, completed January 2025) also shows tangible, family-oriented regeneration.",
+      "tradeoff": "Rent has climbed to \u00a32,217/month average as of August 2026, notably above nearby areas, and the affordable Sheepcote Road homes come with strict eligibility (income under \u00a390,000, no existing homeownership) that may not apply to you.",
+      "tip": "Check Harrow Council's nursery finder for availability near Sheepcote Road specifically, since this is the area's newest family-oriented development.",
+      "weighted_score": 0.644,
+      "scores": {
+       "crime": 0.9291,
+       "green": 0.0062,
+       "nightlife": 0.1196,
+       "transport": 0.9512,
+       "rent": 0.8715
+      },
+      "spawn_score": 0.25,
+      "insights": [
+       "I'll research HA1 (Harrow) to find specific, recent insights about what it's really like to live there.Based on my research, here are **5 specific, recent insights** about HA1 (Harrow) that would genuinely help someone decide whether to live there:",
+       "## 1. **Major New Housing Development Just Completed (January 2025)**",
+       "Sheepcote Road on the former Kodak site reached practical completion in January 2025, delivering 149 new one-bed homes specifically for local first-time buyers. The development was designed by RIBA award-winning Threefold Architects and inspired by historic Metroland architecture. It's a car-free development, which signals the council's commitment to reducing car dependency. This is a tangible sign of regeneration actually happening on the ground.",
+       "## 2. **Affordable Housing Access\u2014But With Strict Eligibility**",
+       "For properties like Sheepcote Road, you must live or work in any London borough, not already own a home, and earn under \u00a390,000. This is important to note if you're hoping to tap into Harrow's \"affordable\" housing programs\u2014they're genuinely restricted. The development was designed with affordability in mind, but accessibility is limited.",
+       "## 3. **One of London's Safest Areas\u2014Ranked 3rd by Metropolitan Police**",
+       "According to Metropolitan Police statistics, Harrow ranks as the third safest area the force serves, following Richmond upon Thames and Kingston upon Thames. This isn't a vague claim\u2014it's a specific official ranking that stands out as a genuine advantage if safety is a priority.",
+       "## 4. **Current Rent (August 2026): \u00a32,217 Monthly Average**",
+       "As of August 2026, the average monthly rental payment in Harrow is \u00a32,217. This is notably higher than the \u00a31,800-\u00a32,"
+      ]
+     },
+     {
+      "rank": 5,
+      "district": "DA1",
+      "verdict": "Right for someone prioritising space and affordability over safety on the roads, and who's comfortable with a busier, denser urban feel.",
+      "rationale": "DA1 offers below-average property prices relative to inner London but comes with a real crime caveat directly relevant to your top priority: vehicle crime runs at 168% of the national average, a specific and persistent issue flagged in local research. Green space and family growth are reflected in the area's 2% annual population increase, well above the UK average.",
+      "tradeoff": "Population density (4,819.8 people per sq km vs. the England & Wales average of 394.6) and M25-driven traffic congestion mean this is a busy, urban environment rather than the quieter setting the green-space weighting might suggest.",
+      "tip": "If you own a car, ask about secure off-street parking specifically, since vehicle crime is the area's most concretely documented safety issue.",
+      "weighted_score": 0.6246,
+      "scores": {
+       "crime": 0.9604,
+       "green": 0.1914,
+       "nightlife": 0.0767,
+       "transport": 0.2073,
+       "rent": 1.0
+      },
+      "spawn_score": 0.25,
+      "insights": [
+       "I'll research DA1 for you, focusing on recent developments and local insights.Based on my research, here are 5 specific insights about DA1 (Dartford) that would matter to someone considering moving there:",
+       "## 1. **Vehicle Crime is a Significant Issue**",
+       "Vehicle crime is 168% of the national average in Dartford, which is notably higher than surrounding areas. This is a persistent concern that residents mention and worth factoring into your decision, particularly if you own a car.",
+       "## 2. **Strong Recent Population Growth**",
+       "The population of Dartford DA1 is increasing by 2% each year, significantly above the UK average growth rate. This reflects growing demand for the area, though it also means rising density and potentially more pressure on local services.",
+       "## 3. **Urban Core with Higher-Than-Average Density**",
+       "Population density is notably high at 4,819.8 people per sq km, compared to the England & Wales average of 394.6. Central postcodes like DA1 1EU and DA1 1NT are densely populated urban areas with mixed residential, commercial, and industrial zones\u2014so expect a bustling, busy environment rather than a quiet suburban feel.",
+       "## 4. **High Car Ownership, But Traffic Congestion Issues**",
+       "Residents of DA1 enjoy a relatively high level of car ownership, averaging 2.25 cars per household, compared to the UK average of 1.4. However, there is a lot of traffic congestion due to the M25, so despite owning cars, commuting can be slow.",
+       "## 5. **Property Prices Above UK Average, But Good Transport Access**",
+       "The average house price stands at \u00a3392,000, significantly higher than the UK average of \u00a3288,000. That said, the area is well-connected by public transport, including direct train services to London"
+      ]
+     }
+    ]
+   },
+   "t_ms": 44137
+  },
+  {
+   "event": "learning_saved",
+   "data": {
+    "count": 3,
+    "query_count": 6,
+    "distillation_due": false,
+    "learnings": [
+     {
+      "category": "synthesiser_insight",
+      "content": "In this query only E1 produced granular, street-level crime statistics while E11, N4, HA1, and DA1 either had no crime data or only proxy/tangential crime information, showing that crime research coverage remains the least reliable dimension even when it is the user's top-weighted priority."
+     },
+     {
+      "category": "context_methodology",
+      "content": "When a nursery-proximity spawn score is added for a parent user, tips should point to concrete, named developments or council services mentioned in the research (such as a specific nursery under construction or a specific development like Sheepcote Road) rather than generic advice to 'check local nurseries.'"
+     },
+     {
+      "category": "token_pattern",
+      "content": "A 35/30 crime-to-green split with a nursery spawn score signals a parent for whom official safety rankings (like Harrow's 3rd-safest Met Police ranking) should be weighted more heavily in the narrative than composite scores, since parents making relocation decisions for a child prioritise verified safety claims over aggregate rankings."
+     }
+    ]
+   },
+   "t_ms": 44235
+  },
+  {
+   "event": "done",
+   "data": {
+    "search_id": "d2e53d9c-237b-45ac-937b-3b206820a2a0",
+    "duration_ms": 44017
+   },
+   "t_ms": 44259
+  }
+ ]
+}

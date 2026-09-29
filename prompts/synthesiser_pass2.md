@@ -57,7 +57,7 @@ Knowledge base (accumulated learnings from past queries):
 
 For each of the top 5 districts, write:
 
-VERDICT: One sentence — what kind of person this district is rifor.
+VERDICT: One sentence — what kind of person this district is right for.
 
 RATIONALE: 2-3 sentences explaining why it scored well for this specific user. 
 Reference their highest-weighted dimensions. Include 1-2 specific facts from 
@@ -97,7 +97,7 @@ Return a JSON object — no markdown, no preamble:
       "rank": 1,
       "district": "KT1",
       "verdict": "...",
-      "rationale"",
+      "rationale": "...",
       "tradeoff": "...",
       "tip": "..."
     }
