@@ -19,9 +19,11 @@ from config import (
     RESEARCH_CONCURRENCY,
     RESEARCH_MAX_TOKENS,
     SONNET_MODEL,
+    SPAWN_TIMEOUT_SECONDS,
     SYNTHESISER_MAX_TOKENS,
 )
 
+from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from agents.state import LondonSearchState, make_initial_state
@@ -41,6 +43,15 @@ async def knowledge_loader_node(state: LondonSearchState) -> dict:
     except Exception as exc:
         logging.error("knowledge_loader_node: failed to load knowledge — %s", exc)
         return {"knowledge_base": ""}
+
+
+def _emit(event: dict) -> None:
+    # Surfaces per-district progress to astream(stream_mode="custom") consumers;
+    # a no-op under ainvoke.
+    try:
+        get_stream_writer()(event)
+    except Exception:
+        pass
 
 
 _PROMPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts")
@@ -125,14 +136,25 @@ async def context_sub_agent_node(state: LondonSearchState) -> dict:
     if not spawn:
         logging.info("context_sub_agent_node: no spawn detected — skipping")
         return {"spawn_scores": {}}
+    from tools.spawn_cache import cache_key, get_cached_scores, put_cached_scores
+    key = cache_key(spawn)
+    cached = await asyncio.get_event_loop().run_in_executor(None, get_cached_scores, key)
+    if cached:
+        logging.info("context_sub_agent_node: spawn cache hit for %s", key)
+        return {"spawn_scores": cached, "spawn_meta": {"from_cache": True, "cache_key": key}}
     logging.info("context_sub_agent_node: spawn detected — running context sub-agent")
     try:
-        result = await run_context_sub_agent(spawn)
+        result = await asyncio.wait_for(run_context_sub_agent(spawn), timeout=SPAWN_TIMEOUT_SECONDS)
         logging.info("context_sub_agent_node: completed — %d districts scored", len(result))
-        return {"spawn_scores": result}
+        if any(v > 0 for v in result.values()):
+            await asyncio.get_event_loop().run_in_executor(None, put_cached_scores, key, result)
+        return {"spawn_scores": result, "spawn_meta": {"from_cache": False, "cache_key": key}}
+    except asyncio.TimeoutError:
+        logging.error("context_sub_agent_node: timed out after %ds — continuing without spawn filter", SPAWN_TIMEOUT_SECONDS)
+        return {"spawn_scores": {}, "spawn_meta": {"from_cache": False, "cache_key": key, "timed_out": True}}
     except Exception as exc:
         logging.error("context_sub_agent_node: failed — %s", exc)
-        return {"spawn_scores": {}}
+        return {"spawn_scores": {}, "spawn_meta": {"from_cache": False, "cache_key": key}}
 
 
 async def crime_scorer_node(state: LondonSearchState) -> dict:
@@ -284,6 +306,7 @@ _RESEARCH_SYSTEM_PROMPT = (
 
 async def research_agent_node(state: LondonSearchState, district: str) -> dict:
     logging.info("research_agent_node: starting research for %s", district)
+    _emit({"event": "research_started", "district": district})
 
     def _call_claude() -> list:
         client = anthropic.Anthropic()
@@ -324,10 +347,13 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
                 logging.warning("research_agent_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
                 await asyncio.sleep(15)
         logging.info("research_agent_node: completed %s — %d insights", district, len(insights))
+        _emit({"event": "research_complete", "district": district, "insights": insights})
         return {"qualitative_insights": {district: insights}}
     except Exception as exc:
         logging.error("research_agent_node: failed for %s — %s", district, exc)
-        return {"qualitative_insights": {district: ["Research unavailable for this district."]}}
+        fallback = ["Research unavailable for this district."]
+        _emit({"event": "research_complete", "district": district, "insights": fallback, "failed": True})
+        return {"qualitative_insights": {district: fallback}}
 
 
 async def synthesiser_pass2_node(state: LondonSearchState) -> dict:

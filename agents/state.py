@@ -26,6 +26,7 @@ class LondonSearchState(TypedDict):
     top_10_districts: list
     top_5_districts: list
     spawn_scores: dict
+    spawn_meta: dict
 
     # Research agent output (Pass 2) — Annotated for parallel writes
     qualitative_insights: Annotated[dict, operator.or_]
@@ -62,6 +63,7 @@ def make_initial_state(
         top_10_districts=[],
         top_5_districts=[],
         spawn_scores={},
+        spawn_meta={},
         qualitative_insights={},
         synthesiser_instruction="",
         top_5=[],

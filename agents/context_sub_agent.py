@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from typing import Optional
 
 import anthropic
 from anthropic.types import TextBlock
@@ -15,9 +16,10 @@ load_dotenv(override=True)
 from config import HAIKU_MODEL, OVERPASS_USER_AGENT
 from tools.postcode import get_all_postcode_coordinates
 
+# overpass.kumi.systems was dropped: it is frequently down and hangs rather
+# than failing fast, which blew the pipeline's time budget.
 _OVERPASS_ENDPOINTS = (
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
 )
 
 _OVERPASS_HEADERS = {"User-Agent": OVERPASS_USER_AGENT}
@@ -25,6 +27,7 @@ _RETRY_STATUSES = {406, 429, 502, 503, 504}
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [10, 20, 30]
 _OVERPASS_TIMEOUT = 30.0
+_COMBINED_TIMEOUT = 45.0
 
 
 def _build_overpass_query(key: str, value: str, lat: float, lng: float) -> str:
@@ -123,6 +126,49 @@ def _normalise_counts(results: list) -> dict:
     }
 
 
+def _build_combined_query(key: str, value: str, coordinates: list) -> str:
+    # One request, one `out count` per district — the response elements come
+    # back in the same order as the districts.
+    blocks = "".join(
+        f'(node["{key}"="{value}"](around:500,{c["lat"]},{c["lng"]});'
+        f'way["{key}"="{value}"](around:500,{c["lat"]},{c["lng"]}););out count;\n'
+        for c in coordinates
+    )
+    return f"[out:json][timeout:40];\n{blocks}"
+
+
+async def _fetch_all_counts_combined(
+    client: httpx.AsyncClient, coordinates: list, key: str, value: str
+) -> Optional[list]:
+    query = _build_combined_query(key, value, coordinates)
+    for endpoint in _OVERPASS_ENDPOINTS:
+        for attempt in range(2):
+            try:
+                response = await client.post(
+                    endpoint, data={"data": query}, headers=_OVERPASS_HEADERS, timeout=_COMBINED_TIMEOUT
+                )
+                if response.status_code in _RETRY_STATUSES:
+                    logging.warning("context_sub_agent: combined query HTTP %d from %s", response.status_code, endpoint)
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                response.raise_for_status()
+                elements = response.json().get("elements", [])
+            except (httpx.HTTPError, ValueError) as exc:
+                logging.warning("context_sub_agent: combined query failed on %s — %s", endpoint, exc)
+                break
+            if len(elements) != len(coordinates):
+                logging.warning(
+                    "context_sub_agent: combined query returned %d counts for %d districts",
+                    len(elements), len(coordinates),
+                )
+                break
+            return [
+                {"district": c["outcode"], "raw_count": int(el.get("tags", {}).get("total", 0))}
+                for c, el in zip(coordinates, elements)
+            ]
+    return None
+
+
 async def _run_overpass_path(spawn: dict) -> dict:
     overpass_query: str = spawn.get("overpass_query", "")
     if "=" not in overpass_query:
@@ -141,6 +187,11 @@ async def _run_overpass_path(spawn: dict) -> dict:
 
     raw_results: list = []
     async with httpx.AsyncClient() as client:
+        combined = await _fetch_all_counts_combined(client, coordinates, key, value)
+        if combined is not None:
+            logging.info("context_sub_agent: combined Overpass query succeeded")
+            return _normalise_counts(combined)
+        logging.info("context_sub_agent: falling back to per-district Overpass queries")
         for i in range(0, len(coordinates), 2):
             batch = coordinates[i : i + 2]
             batch_results = await asyncio.gather(
