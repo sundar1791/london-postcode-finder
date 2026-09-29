@@ -1,0 +1,298 @@
+import asyncio
+import json
+import logging
+import os
+import re
+import sys
+from typing import Optional
+
+import anthropic
+from anthropic.types import TextBlock
+import httpx
+from dotenv import load_dotenv
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(override=True)
+
+from config import HAIKU_MODEL, LONDON_POSTCODE_DISTRICTS, OVERPASS_USER_AGENT, WEB_SEARCH_MAX_TOKENS
+from tools.postcode import get_all_postcode_coordinates
+
+# overpass.kumi.systems was dropped: it is frequently down and hangs rather
+# than failing fast, which blew the pipeline's time budget.
+_OVERPASS_ENDPOINTS = (
+    "https://overpass-api.de/api/interpreter",
+)
+
+_OVERPASS_HEADERS = {"User-Agent": OVERPASS_USER_AGENT}
+_RETRY_STATUSES = {406, 429, 502, 503, 504}
+_MAX_RETRIES = 3
+_RETRY_DELAYS = [10, 20, 30]
+_OVERPASS_TIMEOUT = 30.0
+_COMBINED_TIMEOUT = 45.0
+_WEB_MATCH_THRESHOLD = 0.3
+
+
+def _parse_tag_filter(overpass_query: str) -> Optional[str]:
+    # "amenity=place_of_worship + religion=muslim" -> ["amenity"="place_of_worship"]["religion"="muslim"]
+    parts = [p.strip() for p in re.split(r"\s*(?:\+|&|,|\band\b)\s*", overpass_query) if p.strip()]
+    filters = []
+    for part in parts:
+        if "=" not in part:
+            return None
+        key, value = (x.strip().strip('"\'') for x in part.split("=", 1))
+        if not key or not value or not re.fullmatch(r"[\w:.\- ]+", key + value):
+            return None
+        filters.append(f'["{key}"="{value}"]')
+    return "".join(filters) or None
+
+
+def _build_overpass_query(tags: str, lat: float, lng: float) -> str:
+    return (
+        f'[out:json][timeout:30];\n'
+        f'(\n'
+        f'  node{tags}(around:500,{lat},{lng});\n'
+        f'  way{tags}(around:500,{lat},{lng});\n'
+        f');\n'
+        f'out count;\n'
+    )
+
+
+async def _fetch_count(
+    client: httpx.AsyncClient,
+    district: str,
+    lat: float,
+    lng: float,
+    tags: str,
+) -> dict:
+    query = _build_overpass_query(tags, lat, lng)
+
+    for endpoint in _OVERPASS_ENDPOINTS:
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                response = await client.post(
+                    endpoint, data={"data": query}, headers=_OVERPASS_HEADERS, timeout=_OVERPASS_TIMEOUT
+                )
+            except httpx.RequestError as exc:
+                logging.warning(
+                    "context_sub_agent: %s attempt %d request error for %s: %s",
+                    endpoint, attempt, district, exc,
+                )
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                break
+
+            if response.status_code in _RETRY_STATUSES:
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                break
+
+            if response.status_code >= 400:
+                logging.warning(
+                    "context_sub_agent: %s returned HTTP %d for %s — rotating endpoint",
+                    endpoint, response.status_code, district,
+                )
+                break
+
+            try:
+                data = response.json()
+            except ValueError as exc:
+                snippet = (response.text or "")[:240].replace("\n", " ")
+                logging.warning(
+                    "context_sub_agent: %s not valid JSON for %s (%s); body: %r",
+                    endpoint, district, exc, snippet,
+                )
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                break
+
+            elements = data.get("elements", [])
+            if not elements:
+                return {"district": district, "raw_count": 0}
+
+            total = int(elements[0].get("tags", {}).get("total", 0))
+            return {"district": district, "raw_count": total}
+
+    logging.warning(
+        "context_sub_agent: all endpoints exhausted for %s — using count 0", district
+    )
+    return {"district": district, "raw_count": 0}
+
+
+def _normalise_counts(results: list) -> dict:
+    counts = [r["raw_count"] for r in results]
+
+    if all(c == 0 for c in counts):
+        return {r["district"]: 0.0 for r in results}
+
+    min_count = min(counts)
+    max_count = max(counts)
+
+    if max_count == min_count:
+        return {r["district"]: 0.5 for r in results}
+
+    return {
+        r["district"]: round(
+            (r["raw_count"] - min_count) / (max_count - min_count), 6
+        )
+        for r in results
+    }
+
+
+def _build_combined_query(tags: str, coordinates: list) -> str:
+    # One request, one `out count` per district — the response elements come
+    # back in the same order as the districts.
+    blocks = "".join(
+        f'(node{tags}(around:500,{c["lat"]},{c["lng"]});'
+        f'way{tags}(around:500,{c["lat"]},{c["lng"]}););out count;\n'
+        for c in coordinates
+    )
+    return f"[out:json][timeout:40];\n{blocks}"
+
+
+async def _fetch_all_counts_combined(
+    client: httpx.AsyncClient, coordinates: list, tags: str
+) -> Optional[list]:
+    """Counts for every district in one request. Returns None on a transient
+    failure (worth falling back to per-district queries) and [] when Overpass
+    rejects the query itself (falling back would fail the same way, slowly)."""
+    query = _build_combined_query(tags, coordinates)
+    for endpoint in _OVERPASS_ENDPOINTS:
+        for attempt in range(2):
+            try:
+                response = await client.post(
+                    endpoint, data={"data": query}, headers=_OVERPASS_HEADERS, timeout=_COMBINED_TIMEOUT
+                )
+                if response.status_code in _RETRY_STATUSES:
+                    logging.warning("context_sub_agent: combined query HTTP %d from %s", response.status_code, endpoint)
+                    await asyncio.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                if response.status_code == 400:
+                    logging.error("context_sub_agent: Overpass rejected the query for %s", tags)
+                    return []
+                response.raise_for_status()
+                elements = response.json().get("elements", [])
+            except (httpx.HTTPError, ValueError) as exc:
+                logging.warning("context_sub_agent: combined query failed on %s — %s", endpoint, exc)
+                break
+            if len(elements) != len(coordinates):
+                logging.warning(
+                    "context_sub_agent: combined query returned %d counts for %d districts",
+                    len(elements), len(coordinates),
+                )
+                break
+            return [
+                {"district": c["outcode"], "raw_count": int(el.get("tags", {}).get("total", 0))}
+                for c, el in zip(coordinates, elements)
+            ]
+    return None
+
+
+async def _run_overpass_path(spawn: dict) -> dict:
+    overpass_query: str = spawn.get("overpass_query") or ""
+    tags = _parse_tag_filter(overpass_query)
+    if not tags:
+        logging.error(
+            "context_sub_agent: cannot parse overpass_query '%s' — expected key=value[ + key=value]",
+            overpass_query,
+        )
+        return {}
+
+    logging.info("context_sub_agent: Overpass path — tags %s, radius 500m", tags)
+
+    coordinates = await get_all_postcode_coordinates()
+
+    raw_results: list = []
+    async with httpx.AsyncClient() as client:
+        combined = await _fetch_all_counts_combined(client, coordinates, tags)
+        if combined == []:
+            return {}
+        if combined is not None:
+            logging.info("context_sub_agent: combined Overpass query succeeded")
+            return _normalise_counts(combined)
+        logging.info("context_sub_agent: falling back to per-district Overpass queries")
+        for i in range(0, len(coordinates), 2):
+            batch = coordinates[i : i + 2]
+            batch_results = await asyncio.gather(
+                *[
+                    _fetch_count(
+                        client, coord["outcode"], coord["lat"], coord["lng"], tags
+                    )
+                    for coord in batch
+                ]
+            )
+            raw_results.extend(batch_results)
+            if i + 2 < len(coordinates):
+                await asyncio.sleep(5)
+
+    logging.info(
+        "context_sub_agent: Overpass complete — %d districts fetched", len(raw_results)
+    )
+    return _normalise_counts(raw_results)
+
+
+async def _run_web_search_path(spawn: dict) -> dict:
+
+    intent: str = spawn.get("intent", "")
+    district_list = ", ".join(LONDON_POSTCODE_DISTRICTS)
+
+    prompt = (
+        f"For each of these 40 London postcode districts, score from 0-1 how well it "
+        f"matches this criterion: {intent}. Districts: {district_list}. Use 0 where it is "
+        f"absent or negligible, and reserve high scores for districts clearly known for it. "
+        f"Return only a JSON object mapping district to score, no other text."
+    )
+
+    def _call_claude() -> dict:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model=HAIKU_MODEL,
+            max_tokens=WEB_SEARCH_MAX_TOKENS,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(
+            block.text for block in response.content
+            if getattr(block, "type", None) == "text"
+        )
+        # The model often wraps the JSON in prose after searching; take the last object.
+        matches = re.findall(r"\{[^{}]*\}", text, flags=re.S)
+        if not matches:
+            raise ValueError(f"no JSON object in response: {text[:200]!r}")
+        return json.loads(matches[-1], strict=False)
+
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
+        # Scores are used as a >0 filter downstream, so weak matches count as none.
+        scores = {
+            k: (min(1.0, float(v)) if float(v) >= _WEB_MATCH_THRESHOLD else 0.0)
+            for k, v in result.items() if k in LONDON_POSTCODE_DISTRICTS
+        }
+        logging.info("context_sub_agent: web search path complete — %d districts scored", len(scores))
+        return {d: scores.get(d, 0.0) for d in LONDON_POSTCODE_DISTRICTS}
+    except Exception as exc:
+        # An empty result means "no filter" downstream; a flat 0.5 would look like
+        # every district matched.
+        logging.error("context_sub_agent: web search path failed — %s; spawn filter will not be applied", exc)
+        return {}
+
+
+async def run_context_sub_agent(spawn: dict) -> dict:
+    try:
+        if spawn.get("web_search_fallback"):
+            logging.info(
+                "context_sub_agent: web_search_fallback=True — using Claude web search path for intent: %s",
+                spawn.get("intent"),
+            )
+            return await _run_web_search_path(spawn)
+
+        logging.info(
+            "context_sub_agent: web_search_fallback=False — using Overpass path for query: %s",
+            spawn.get("overpass_query"),
+        )
+        return await _run_overpass_path(spawn)
+    except Exception as exc:
+        logging.error("context_sub_agent: unexpected error — %s; spawn filter will not be applied", exc)
+        return {}

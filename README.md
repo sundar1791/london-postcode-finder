@@ -1,121 +1,159 @@
 # London Postcode Finder
 
-## What This Project Does
+A multi-agent web app that recommends where to live in London based on what you care about — and gets smarter with every search.
 
-London Postcode Finder scores 40 London postcode districts across five dimensions — Safety, Green Space, Nightlife, Transport, and Rent — by orchestrating a set of specialised AI sub-agents with LangGraph. Each agent calls a different data source (Metropolitan Police API, TfL Unified API, ONS rent data, etc.), normalises its results to a 0–100 scale, and hands off to a final Claude-powered ranking agent that combines the scores and returns a ranked list of postcodes tailored to the user's stated priorities.
+You spend 100 tokens across five dimensions (safety, green space, nightlife, transport, affordability) and can add a sentence of context ("I need a nursery nearby for my daughter"). A LangGraph pipeline scores 40 London postcode districts, sends five research agents to the web for the best fits, and writes five recommendations with an honest tradeoff for each. The UI shows every agent decision live as it happens.
+
+- **Search** (`/`) — sliders, context, a live agent timeline, results and a "Why these results" drawer
+- **What it has learned** (`/learning`) — the distilled memory, raw notes, and how the rules changed over time
+- **How it works** (`/how-it-works`) — the architecture, in plain English
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        User / Frontend                       │
-│                    (Next.js — /frontend)                     │
-└────────────────────────────┬────────────────────────────────┘
-                             │ HTTP
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   FastAPI  (api.py)                          │
-│             POST /score  ·  GET /districts                   │
-└────────┬──────────────────────────────────────┬─────────────┘
-         │ LangGraph orchestration               │ Supabase client
-         ▼                                       ▼
-┌────────────────────┐                ┌──────────────────────┐
-│   Scoring Agents   │                │  Supabase (Postgres) │
-│  /agents           │                │  cached scores table │
-│                    │                └──────────────────────┘
-│  safety_agent.py   │◄──── Met Police Open Data API
-│  green_agent.py    │◄──── TfL Unified API (green space)
-│  nightlife_agent.py│◄──── TfL / Google Places API
-│  transport_agent.py│◄──── TfL Unified API (journey times)
-│  rent_agent.py     │◄──── ONS Private Rental Market CSV
-│                    │
-│  ranking_agent.py  │◄──── Claude (Anthropic API) — final rank
-└────────────────────┘
-         │
-         ▼
-┌────────────────────┐
-│   Shared Tools     │
-│   /tools           │
-│  tfl_client.py     │
-│  postcode_utils.py │
-└────────────────────┘
+Browser ──► Next.js (Vercel) ──fetch + Server-Sent Events──► FastAPI (Railway, Docker)
+                                                                  │
+                                                                  ▼
+                                                          LangGraph pipeline
+                                                                  │
+                                        Supabase (Postgres) ◄─────┴─────► Anthropic · Overpass · TfL
 ```
 
+The backend is a long-running container rather than a serverless function because a search takes 45–90 seconds and streams progress the whole way.
+
+### The pipeline
+
+```
+Knowledge Loader        distilled brain + last 10 raw learnings
+      ↓
+Orchestrator            Claude: ignore / adjust weights / spawn a context agent
+      ↓
+Context Sub-Agent       only when spawned — one combined Overpass query (or web search), cached 30 days
+      ↓
+5 Scorers (parallel)    deterministic lookups of monthly pre-computed scores — no LLM
+      ↓
+Synthesiser pass 1      weight, rank, apply the spawn filter, keep top 5
+      ↓
+5 Research Agents       Claude + web search, one per district, bounded concurrency
+      ↓
+Synthesiser pass 2      Claude: verdict, rationale, tradeoff, tip + 2–3 learnings
+      ↓
+Knowledge Writer        save learnings, count the query
+      ↓
+Distiller               every DISTILL_EVERY_N searches, after the response is sent
+```
+
+**Scorers are not agents.** The five data pipelines in `/scorers` are deterministic. Judgement lives in `/agents`: the orchestrator, the context sub-agent, the research agents and the distiller.
+
+**Spawn is a filter.** A district with no nursery nearby is removed from the shortlist rather than averaged in.
+
+**Layered memory, not RAG.** The distilled brain (compressed, ≤12 heuristics) plus the last 10 raw notes are injected into every search, like a long conversation's summary plus its recent turns.
+
+### Streaming events
+
+`POST /api/search` returns `text/event-stream` with typed events: `started`, `knowledge_loaded`, `orchestrator`, `spawn_started`, `spawn_complete`, `scorer_complete`, `scoring_complete`, `shortlist`, `research_started`, `research_complete`, `synthesis_complete`, `learning_saved`, `done` / `error`.
+
+### API
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | Liveness + DB connectivity |
+| `POST /api/search` | `{token_allocation, context_text, session_id}` → SSE stream. Tokens use keys `crime, green, nightlife, transport, rent`, each 0–100, summing to 100; context ≤ 500 chars |
+| `GET /api/knowledge` | Distilled brain, 10 recent learnings, query count, distillation history |
+| `GET /api/knowledge/export` | The knowledge base as `knowledge.md` |
+| `POST /api/admin/distill` | Run distillation now (header `X-Admin-Token`) |
+| `GET /api/cron/refresh-scores` | Re-run the monthly score pre-computation (header `Authorization: Bearer $CRON_SECRET`) |
+| `GET /api/demo/recorded` | A recorded example run the UI can replay |
+
+Cost protection: `RATE_LIMIT_PER_HOUR` per IP (default 5) and `DAILY_SEARCH_CAP` across everyone (default 100). Both return a 429 that the UI turns into "See a recorded example run". Each search has a 240 s hard timeout.
+
 ---
 
-## Scoring Dimensions
+## Run it locally
 
-| Dimension   | API / Data Source                              |
-|-------------|------------------------------------------------|
-| Safety      | Metropolitan Police Open Data API              |
-| Green Space | TfL Unified API (parks & open spaces layer)   |
-| Nightlife   | TfL / Google Places API (licensed venues)      |
-| Transport   | TfL Unified API (journey time to Zone 1)       |
-| Rent        | ONS Private Rental Market Statistics CSV       |
-
----
-
-## Local Setup
+Prerequisites: Python 3.11, Node 20+, Docker Desktop, Supabase CLI.
 
 ```bash
-# 1. Clone and enter the repo
-git clone <repo-url>
-cd london-postcode-finder
-
-# 2. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-
-# 3. Install Python dependencies
+# Backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env            # fill in ANTHROPIC_API_KEY, SUPABASE_URL/KEY (local values from `supabase status`)
 
-# 4. Configure environment variables
-cp .env.example .env
-# Edit .env and fill in all keys
+supabase start
+supabase migration up --local   # apply migrations without wiping data
+python tools/load_rent_data.py  # rent_data from data/ons_rent.xlsx
+python tools/precompute_scores.py   # fills cached_scores (slow: live Police/Overpass/TfL calls)
 
-# 5. Download the ONS rent CSV and place it in /data
-#    (see data/README or project wiki for the exact URL)
+uvicorn api.main:app --reload --port 8000
 
-# 6. Start the API server
-python api.py
-# Server runs at http://localhost:8000
+# Frontend (second terminal)
+cd frontend
+cp .env.example .env.local
+npm install && npm run dev      # http://localhost:3000
 ```
+
+> `supabase db reset` wipes `cached_scores` and `rent_data`. Prefer `supabase migration up --local`; if you must reset, re-run the two data scripts afterwards.
+
+Useful scripts:
+
+| Command | What it does |
+|---|---|
+| `python tools/seed_demo.py --yes` | 12 varied searches so learnings accumulate and distillation fires (~$2–3) |
+| `python tools/record_demo_run.py` | Records the fallback demo run into `api/demo/` and `frontend/public/` (~$0.20) |
+| `python agents/distiller.py [--force]` | Run a distillation from the command line |
+
+### Tests
+
+```bash
+python -m pytest tests/ -v                                  # unit + live scorer tests
+python -m pytest tests/test_api.py tests/test_distiller.py tests/test_context_sub_agent.py   # fast, no network
+RUN_E2E_TESTS=1 python -m pytest tests/test_pipeline_e2e.py # real Anthropic calls
+```
+
+The scorer tests call live public APIs (Police, Overpass, TfL) and can flake when those are overloaded.
 
 ---
 
-## CLI Tools Required
+## Environment variables
 
-| Tool        | Purpose                          | Install                        |
-|-------------|----------------------------------|--------------------------------|
-| `gh`        | GitHub CLI (PRs, issues)         | `brew install gh`              |
-| `supabase`  | Supabase local dev & migrations  | `brew install supabase/tap/supabase` |
-| `vercel`    | Deploy the Next.js frontend      | `npm i -g vercel`              |
+Backend: see [`.env.example`](.env.example) — every variable is commented. Frontend: see [`frontend/.env.example`](frontend/.env.example).
+
+| Backend | Required | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | yes | |
+| `SUPABASE_URL`, `SUPABASE_KEY` | yes | |
+| `TFL_APP_KEY` | for score refresh | |
+| `ADMIN_TOKEN` | recommended | manual distillation; bypasses rate limits |
+| `CRON_SECRET` | for monthly refresh | must match Vercel |
+| `FRONTEND_ORIGIN` | in production | comma-separated CORS origins |
+| `RATE_LIMIT_PER_HOUR`, `DAILY_SEARCH_CAP`, `DISTILL_EVERY_N` | no | defaults 5 / 100 / 10 |
+
+| Frontend | Notes |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | public backend URL, called from the browser |
+| `BACKEND_URL`, `CRON_SECRET` | server-only, used by the cron proxy route |
 
 ---
 
-## Contributing
+## Deploy
 
-**Branch naming**
+Backend on Railway from the repo root (`Dockerfile`, `railway.json`, health check `/api/health`); frontend on Vercel with root directory `frontend` (`frontend/vercel.json` holds the monthly cron). The exact click-by-click checklist is in [`MANUAL_STEPS.md`](MANUAL_STEPS.md).
 
-```
-feat/<short-description>     # new feature
-fix/<short-description>      # bug fix
-chore/<short-description>    # maintenance / tooling
-```
+---
 
-**Commit format** (Conventional Commits)
+## Project structure
 
 ```
-feat(transport): add TfL journey-time normalisation
-fix(rent): handle missing ONS rows for outer districts
-chore(deps): bump anthropic to 0.25.0
+agents/      orchestrator + graph, context sub-agent, knowledge loader/writer, distiller
+api/         FastAPI app, SSE event mapping, rate limiter, recorded demo run
+scorers/     5 deterministic scorers (live fetch + cached read)
+tools/       postcodes.io, Supabase client, spawn cache, precompute, seed + record scripts
+prompts/     orchestrator, synthesiser, distiller system prompts
+supabase/    migrations — every schema change is a migration
+frontend/    Next.js app
+tests/       pytest
 ```
 
-**PR process**
-
-1. Branch off `main`, make your changes, push.
-2. Open a PR with `gh pr create` — fill in the summary and test plan.
-3. All checks (pytest, lint) must pass before review.
-4. Squash-merge into `main` after approval.
+Development workflow and branch rules: `feature/*` → PR to `dev` → PR to `main`. See `PROJECT.md` for the full plan and backlog.

@@ -6,5 +6,7 @@ uvicorn
 python-dotenv
 supabase
 pandas
+openpyxl
 pytest
 pytest-asyncio
+pytest-timeout

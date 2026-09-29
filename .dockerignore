@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+frontend
+data
+supabase
+tests
+nimbalyst-local
+**/__pycache__
+*.pyc
+.pytest_cache
+.vercel
