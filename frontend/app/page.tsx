@@ -53,6 +53,7 @@ export default function SearchPage() {
   const [whyOpen, setWhyOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const activityRef = useRef<HTMLDivElement>(null);
 
   const busy = run.status === "running";
   const problem = blocked ?? (run.status === "error" ? run.error ?? null : null);
@@ -60,6 +61,13 @@ export default function SearchPage() {
   const hasRun = run.status !== "idle";
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // On narrow screens the timeline sits below the form; bring it into view when a run starts.
+  useEffect(() => {
+    if (run.status === "running" && window.matchMedia("(max-width: 1023px)").matches) {
+      activityRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [run.status]);
 
   useEffect(() => {
     if (run.recommendations) resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -195,7 +203,7 @@ export default function SearchPage() {
           </div>
         </form>
 
-        <div className="min-w-0 space-y-8">
+        <div ref={activityRef} className="min-w-0 space-y-8 scroll-mt-4">
           {recorded && (
             <div className="rounded-md border border-accent bg-accent-soft px-4 py-3 text-sm" role="status">
               <strong className="font-semibold">Recorded example run.</strong> This is a replay of a real search from{" "}
