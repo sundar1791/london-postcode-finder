@@ -13,7 +13,7 @@ load_dotenv(override=True)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import DISTILL_EVERY_N, DISTILLER_MAX_TOKENS, SONNET_MODEL
+from config import DISTILL_EVERY_N, DISTILLER_EFFORT, DISTILLER_MAX_TOKENS, SONNET_MODEL
 from tools.db import get_client
 
 _PROMPT_PATH = os.path.join(
@@ -52,9 +52,12 @@ def _call_claude(client, user_message: str) -> dict:
     response = client.messages.create(
         model=SONNET_MODEL,
         max_tokens=DISTILLER_MAX_TOKENS,
+        output_config={"effort": DISTILLER_EFFORT},
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
+    if response.stop_reason == "max_tokens":
+        raise ValueError(f"distiller hit max_tokens={DISTILLER_MAX_TOKENS} before finishing")
     raw = "".join(
         block.text for block in response.content
         if getattr(block, "type", None) == "text"

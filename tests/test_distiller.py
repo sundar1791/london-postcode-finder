@@ -82,6 +82,18 @@ def test_api_error_keeps_old_brain_and_does_not_raise():
     assert db.tables["agent_config"][0]["distilled_brain"] == OLD_BRAIN
 
 
+def test_truncated_by_max_tokens_keeps_old_brain():
+    db = _db()
+    client = FakeAnthropic(payload={"distilled_brain": "x", "change_summary": "y"})
+    real = client._create
+    client.messages.create = lambda **kw: setattr(r := real(**kw), "stop_reason", "max_tokens") or r
+
+    result = distil(supabase=db, client=client)
+
+    assert result["status"] == "failed"
+    assert db.tables["agent_config"][0]["distilled_brain"] == OLD_BRAIN
+
+
 def test_no_new_learnings_skips_without_calling_claude():
     db = _db(last_distilled="2026-09-30T00:00:00+00:00")
     client = FakeAnthropic(payload={})

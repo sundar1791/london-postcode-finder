@@ -412,6 +412,12 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
                     raise
                 logging.warning("synthesiser_pass2_node: rate limit hit — waiting 15s before retry %d/3", _attempt)
                 await asyncio.sleep(15)
+            except json.JSONDecodeError as exc:
+                # Occasionally the model emits malformed JSON (e.g. an unescaped quote);
+                # one fresh attempt almost always fixes it.
+                if _attempt >= 2:
+                    raise
+                logging.warning("synthesiser_pass2_node: malformed JSON (%s) — retrying once", exc)
         recommendations = parsed.get("recommendations", [])
         for rec in recommendations:
             logging.info(

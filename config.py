@@ -16,7 +16,9 @@ ORCHESTRATOR_MAX_TOKENS = int(os.getenv("ORCHESTRATOR_MAX_TOKENS", "1500"))
 SYNTHESISER_MAX_TOKENS = int(os.getenv("SYNTHESISER_MAX_TOKENS", "8000"))
 RESEARCH_MAX_TOKENS = int(os.getenv("RESEARCH_MAX_TOKENS", "500"))
 WEB_SEARCH_MAX_TOKENS = int(os.getenv("WEB_SEARCH_MAX_TOKENS", "2000"))
-DISTILLER_MAX_TOKENS = int(os.getenv("DISTILLER_MAX_TOKENS", "8000"))
+DISTILLER_MAX_TOKENS = int(os.getenv("DISTILLER_MAX_TOKENS", "16000"))
+# Sonnet 5 thinks adaptively; effort bounds how much of max_tokens thinking can take.
+DISTILLER_EFFORT = os.getenv("DISTILLER_EFFORT", "medium")
 
 # Pipeline behaviour
 RESEARCH_CONCURRENCY = int(os.getenv("RESEARCH_CONCURRENCY", "5"))

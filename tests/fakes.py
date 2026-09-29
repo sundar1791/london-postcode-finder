@@ -101,7 +101,7 @@ class FakeAnthropic:
         self.calls.append(kwargs)
         if self._raises:
             raise self._raises
-        return SimpleNamespace(content=[
+        return SimpleNamespace(stop_reason="end_turn", content=[
             SimpleNamespace(type="thinking", thinking="..."),
             SimpleNamespace(type="text", text=self._text),
         ])
