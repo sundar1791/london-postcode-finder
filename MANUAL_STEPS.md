@@ -128,7 +128,7 @@ Done when: health returns `"db":"ok"`.
 4. **Deploy**. Copy the production URL, e.g. `https://london-postcode-finder.vercel.app`.
 5. **Settings → Cron Jobs** should list `/api/cron/refresh-scores` at `0 0 1 * *`, picked up from `frontend/vercel.json`.
 
-Or with the CLI: `cd frontend && vercel link && vercel env add NEXT_PUBLIC_API_URL production` (repeat for each variable), then `vercel --prod`.
+The existing Vercel project was originally created with the FastAPI preset at the repo root. Its framework must be **Next.js** and its root directory **`frontend`**, or builds fail. Or with the CLI from the repo root: `vercel env add NEXT_PUBLIC_API_URL production` (repeat for each variable), then `vercel deploy --prod`.
 
 ---
 
@@ -143,7 +143,7 @@ FRONTEND_ORIGIN=https://london-postcode-finder.vercel.app,https://postcodes.sund
 Include the custom domain if you'll add it in step 6. If you want Vercel preview deployments to work too, also set:
 
 ```
-FRONTEND_ORIGIN_REGEX=^https://london-postcode-finder-[a-z0-9-]+-[a-z0-9-]+\.vercel\.app$
+FRONTEND_ORIGIN_REGEX=^https://london-postcode-finder-[a-z0-9-]+-sundar1791s-projects\.vercel\.app$
 ```
 
 Redeploy the Railway service, which happens automatically when variables change.
