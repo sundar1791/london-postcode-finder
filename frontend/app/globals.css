@@ -112,14 +112,14 @@ body {
 input[type="range"].token-range {
   -webkit-appearance: none;
   appearance: none;
+  display: block;
   width: 100%;
-  height: 28px;
+  height: 44px;
   background: transparent;
-  cursor: pointer;
 }
 input[type="range"].token-range::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: linear-gradient(
     to right,
     var(--track) 0%,
@@ -129,30 +129,36 @@ input[type="range"].token-range::-webkit-slider-runnable-track {
   );
 }
 input[type="range"].token-range::-moz-range-track {
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: var(--rule);
 }
 input[type="range"].token-range::-moz-range-progress {
-  height: 6px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 4px;
   background: var(--track);
 }
 input[type="range"].token-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  margin-top: -7px;
+  width: 26px;
+  height: 26px;
+  margin-top: -9px;
   border-radius: 50%;
   background: var(--paper-raised);
   border: 3px solid var(--track);
 }
 input[type="range"].token-range::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--paper-raised);
   border: 3px solid var(--track);
+}
+input[type="range"].token-range:focus-visible {
+  outline: none;
+}
+input[type="range"].token-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--accent);
 }
 
 @keyframes station-pulse {
