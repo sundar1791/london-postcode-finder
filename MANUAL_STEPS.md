@@ -18,11 +18,12 @@ Keep both in your password manager. `ADMIN_TOKEN` goes on Railway only. `CRON_SE
 
 ## 1. Anthropic Console: cap spend
 
-1. Go to https://console.anthropic.com → **Settings → Limits** (or **Billing → Spend limits**).
-2. Set a **monthly spend limit of £30–50**, or the USD equivalent (about $40–60).
-3. Optionally add an email alert at 50%.
+1. **Top up credit first.** The build used up the balance: the last e2e run failed with "Your credit balance is too low to access the Anthropic API". Go to **Billing → Buy credits**; $20–30 covers the warm-up plus a few days of demo traffic.
+2. Go to https://console.anthropic.com → **Settings → Limits** (or **Billing → Spend limits**).
+3. Set a **monthly spend limit of £30–50**, or the USD equivalent (about $40–60).
+4. Optionally add an email alert at 50%.
 
-Done when: the limit shows on the Limits page. Each search costs about $0.15–0.20, so the default `DAILY_SEARCH_CAP=100` means about $20/day at worst.
+Done when: the limit shows on the Limits page and `RUN_E2E_TESTS=1 python -m pytest tests/test_pipeline_e2e.py` passes locally. Each search costs about $0.15–0.20, so the default `DAILY_SEARCH_CAP=100` means about $20/day at worst.
 
 ---
 
