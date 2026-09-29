@@ -155,6 +155,7 @@ def _spawn_background(coro) -> None:
 
 
 async def _produce(req: SearchRequest, queue: asyncio.Queue) -> None:
+    from agents.graph import ModelUnavailableError
     from agents.state import make_initial_state
 
     mapper = EventMapper(req.token_allocation, req.context_text)
@@ -183,6 +184,15 @@ async def _produce(req: SearchRequest, queue: asyncio.Queue) -> None:
     except asyncio.CancelledError:
         _save_search(req, mapper, "timeout", int((time.monotonic() - start) * 1000))
         raise
+    except ModelUnavailableError as exc:
+        log.error("model unavailable: %s", exc)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        await loop.run_in_executor(None, _save_search, req, mapper, "error", duration_ms)
+        await queue.put(("error", {
+            "code": "model_unavailable",
+            "message": "The AI service behind this demo isn't available right now, so no recommendations "
+                       "could be written. Watch a recorded example run, or try again later.",
+        }))
     except Exception as exc:
         log.exception("pipeline failed")
         status = "error"

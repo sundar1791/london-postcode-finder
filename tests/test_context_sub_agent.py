@@ -73,3 +73,19 @@ def test_spawn_cache_ignores_stale_entries():
         {"overpass_query": "amenity=school", "scores": {"E1": 1.0}, "created_at": "2020-01-01T00:00:00+00:00"},
     ]})
     assert get_cached_scores("amenity=school", supabase=db) is None
+
+
+def _api_error(cls, status, message):
+    import anthropic
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    return cls(message, response=httpx.Response(status, request=request), body=None)
+
+
+def test_is_account_error():
+    import anthropic
+    from agents.graph import is_account_error
+    assert is_account_error(_api_error(anthropic.BadRequestError, 400, "You have reached your specified API usage limits."))
+    assert is_account_error(_api_error(anthropic.BadRequestError, 400, "Your credit balance is too low to access the Anthropic API."))
+    assert is_account_error(_api_error(anthropic.AuthenticationError, 401, "invalid x-api-key"))
+    assert not is_account_error(_api_error(anthropic.BadRequestError, 400, "max_tokens: must be positive"))
+    assert not is_account_error(RuntimeError("boom"))

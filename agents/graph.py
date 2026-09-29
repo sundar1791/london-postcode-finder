@@ -45,6 +45,20 @@ async def knowledge_loader_node(state: LondonSearchState) -> dict:
         return {"knowledge_base": ""}
 
 
+class ModelUnavailableError(RuntimeError):
+    """The Anthropic account can't serve requests (out of credit, spend limit
+    reached, bad key). Every later model call would fail too, so stop early."""
+
+
+def is_account_error(exc: Exception) -> bool:
+    if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
+        return True
+    if isinstance(exc, anthropic.BadRequestError):
+        message = str(exc).lower()
+        return "credit balance" in message or "usage limit" in message
+    return False
+
+
 def _emit(event: dict) -> None:
     # Surfaces per-district progress to astream(stream_mode="custom") consumers;
     # a no-op under ainvoke.
@@ -122,6 +136,8 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
     except ValueError:
         raise
     except Exception as exc:
+        if is_account_error(exc):
+            raise ModelUnavailableError(str(exc)) from exc
         logging.error("orchestrator_node: Claude call failed — %s", exc)
         return {
             "adjusted_allocation": state["token_allocation"],

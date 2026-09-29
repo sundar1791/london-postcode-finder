@@ -25,6 +25,7 @@ const BLOCKED_TITLE: Record<string, string> = {
   unreachable: "The search service is offline",
   timeout: "That search took too long",
   pipeline_failed: "The search didn't finish",
+  model_unavailable: "The AI service is unavailable",
   server: "The search service returned an error",
   invalid: "Those inputs weren't accepted",
 };

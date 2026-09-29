@@ -13,14 +13,17 @@ TOP_5 = ["KT1", "TW1", "SW19", "BR3", "SM1"]
 
 
 class FakePipeline:
-    def __init__(self, spawn=False, delay=0.0, fail=False):
+    def __init__(self, spawn=False, delay=0.0, fail=False, raises=None):
         self.spawn = spawn
         self.delay = delay
         self.fail = fail
+        self.raises = raises
 
     async def astream(self, initial, stream_mode=None):
         spawn = {"intent": "nursery", "overpass_query": "amenity=kindergarten", "web_search_fallback": False}
         yield "updates", {"knowledge_loader": {"knowledge_base": "## Distilled Knowledge\nx"}}
+        if self.raises:
+            raise self.raises
         yield "updates", {"orchestrator": {
             "adjusted_allocation": initial["token_allocation"],
             "context_analysis": {"type": "spawn" if self.spawn else "ignore", "reasoning": "r", "spawn": spawn if self.spawn else None},
@@ -138,6 +141,15 @@ def test_pipeline_error_emits_error_event(client, db, monkeypatch):
     r = client.post("/api/search", json={"token_allocation": BALANCED})
     names = [n for n, _ in _events(r.text)]
     assert names[-1] == "error"
+    assert db.tables["searches"][0]["status"] == "error"
+
+
+def test_model_unavailable_emits_clear_error(client, db, monkeypatch):
+    from agents.graph import ModelUnavailableError
+    monkeypatch.setattr(main, "get_pipeline", lambda: FakePipeline(raises=ModelUnavailableError("usage limits")))
+    r = client.post("/api/search", json={"token_allocation": BALANCED})
+    name, data = _events(r.text)[-1]
+    assert name == "error" and data["code"] == "model_unavailable"
     assert db.tables["searches"][0]["status"] == "error"
 
 
