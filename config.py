@@ -1,13 +1,36 @@
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+load_dotenv(override=True)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 TFL_APP_KEY = os.getenv("TFL_APP_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Models and token budgets
+SONNET_MODEL = os.getenv("SONNET_MODEL", "claude-sonnet-5")
+HAIKU_MODEL = os.getenv("HAIKU_MODEL", "claude-haiku-4-5-20251001")
+ORCHESTRATOR_MAX_TOKENS = int(os.getenv("ORCHESTRATOR_MAX_TOKENS", "1500"))
+SYNTHESISER_MAX_TOKENS = int(os.getenv("SYNTHESISER_MAX_TOKENS", "8000"))
+RESEARCH_MAX_TOKENS = int(os.getenv("RESEARCH_MAX_TOKENS", "500"))
+DISTILLER_MAX_TOKENS = int(os.getenv("DISTILLER_MAX_TOKENS", "8000"))
+
+# Pipeline behaviour
+RESEARCH_CONCURRENCY = int(os.getenv("RESEARCH_CONCURRENCY", "5"))
+DISTILL_EVERY_N = int(os.getenv("DISTILL_EVERY_N", "10"))
+PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "240"))
+SPAWN_CACHE_MAX_AGE_DAYS = int(os.getenv("SPAWN_CACHE_MAX_AGE_DAYS", "30"))
+
+# API protection
+RATE_LIMIT_PER_HOUR = int(os.getenv("RATE_LIMIT_PER_HOUR", "5"))
+DAILY_SEARCH_CAP = int(os.getenv("DAILY_SEARCH_CAP", "100"))
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+CRON_SECRET = os.getenv("CRON_SECRET", "")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "")
+
+OVERPASS_USER_AGENT = "london-postcode-finder/1.0 (portfolio project)"
 
 # 40 postcode districts covering inner and outer London across all compass
 # directions and zones. Mix of central (Z1), inner (Z2-3), outer (Z3-6).

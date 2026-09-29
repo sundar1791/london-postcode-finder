@@ -9,9 +9,18 @@ import anthropic
 from anthropic.types import TextBlock
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import (
+    HAIKU_MODEL,
+    ORCHESTRATOR_MAX_TOKENS,
+    RESEARCH_CONCURRENCY,
+    RESEARCH_MAX_TOKENS,
+    SONNET_MODEL,
+    SYNTHESISER_MAX_TOKENS,
+)
 
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
@@ -49,8 +58,8 @@ async def orchestrator_node(state: LondonSearchState) -> dict:
     def _call_claude() -> str:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=1500,
+            model=SONNET_MODEL,
+            max_tokens=ORCHESTRATOR_MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -279,8 +288,8 @@ async def research_agent_node(state: LondonSearchState, district: str) -> dict:
     def _call_claude() -> list:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
+            model=HAIKU_MODEL,
+            max_tokens=RESEARCH_MAX_TOKENS,
             system=_RESEARCH_SYSTEM_PROMPT,
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{
@@ -354,8 +363,8 @@ async def synthesiser_pass2_node(state: LondonSearchState) -> dict:
     def _call_claude() -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=8000,
+            model=SONNET_MODEL,
+            max_tokens=SYNTHESISER_MAX_TOKENS,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -412,7 +421,13 @@ async def knowledge_writer_node(state: LondonSearchState) -> dict:
 async def research_agents_parallel_node(state: LondonSearchState) -> dict:
     districts = state.get("top_5_districts", [])
     logging.info("research_agents_parallel_node: starting parallel research for %s", districts)
-    results = await asyncio.gather(*[research_agent_node(state, d) for d in districts])
+    semaphore = asyncio.Semaphore(RESEARCH_CONCURRENCY)
+
+    async def _limited(district: str) -> dict:
+        async with semaphore:
+            return await research_agent_node(state, district)
+
+    results = await asyncio.gather(*[_limited(d) for d in districts])
     merged: dict = {}
     for r in results:
         merged.update(r.get("qualitative_insights", {}))

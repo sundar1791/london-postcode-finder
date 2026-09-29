@@ -6,6 +6,7 @@ import httpx
 from dotenv import load_dotenv
 from supabase import create_client
 
+from config import OVERPASS_USER_AGENT
 from tools.postcode import get_all_postcode_coordinates, get_postcode_coordinates
 
 load_dotenv(override=True)
@@ -52,7 +53,6 @@ def score_all_from_cache(supabase=None) -> dict[str, float]:
 _OVERPASS_ENDPOINTS = (
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass.openstreetmap.fr/api/interpreter",
 )
 
 # Deprecated single URL (kept for any external imports); prefer _OVERPASS_ENDPOINTS.
@@ -78,6 +78,8 @@ out count;
 """
 
 
+_OVERPASS_HEADERS = {"User-Agent": OVERPASS_USER_AGENT}
+
 # 502/503: bad gateway / overloaded; 429/504: rate limit / timeout
 _RETRY_STATUSES = {429, 502, 503, 504}
 _MAX_RETRIES = 3
@@ -96,7 +98,7 @@ async def _fetch_green_count(
         for attempt in range(_MAX_RETRIES + 1):
             try:
                 response = await client.post(
-                    endpoint, data={"data": query}, timeout=_OVERPASS_TIMEOUT
+                    endpoint, data={"data": query}, headers=_OVERPASS_HEADERS, timeout=_OVERPASS_TIMEOUT
                 )
             except httpx.RequestError as exc:
                 endpoint_errors.append(f"{endpoint} attempt {attempt}: {exc}")

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(override=True)
 
+from config import HAIKU_MODEL, OVERPASS_USER_AGENT
 from tools.postcode import get_all_postcode_coordinates
 
 _OVERPASS_ENDPOINTS = (
@@ -19,7 +20,7 @@ _OVERPASS_ENDPOINTS = (
     "https://overpass.kumi.systems/api/interpreter",
 )
 
-_OVERPASS_HEADERS = {"User-Agent": "london-postcode-finder/1.0 (portfolio project)"}
+_OVERPASS_HEADERS = {"User-Agent": OVERPASS_USER_AGENT}
 _RETRY_STATUSES = {406, 429, 502, 503, 504}
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [10, 20, 30]
@@ -175,7 +176,7 @@ async def _run_web_search_path(spawn: dict) -> dict:
     def _call_claude() -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=HAIKU_MODEL,
             max_tokens=500,
             tools=[{"type": "web_search_20250305", "name": "web_search"}],
             messages=[{"role": "user", "content": prompt}],

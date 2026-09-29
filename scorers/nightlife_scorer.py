@@ -6,6 +6,7 @@ import httpx
 from dotenv import load_dotenv
 from supabase import create_client
 
+from config import OVERPASS_USER_AGENT
 from tools.postcode import get_all_postcode_coordinates, get_postcode_coordinates
 
 load_dotenv(override=True)
@@ -49,6 +50,7 @@ def score_all_from_cache(supabase=None) -> dict[str, float]:
     return result
 
 OVERPASS_API = "https://overpass-api.de/api/interpreter"
+_OVERPASS_HEADERS = {"User-Agent": OVERPASS_USER_AGENT}
 
 _OVERPASS_QUERY_TEMPLATE = """
 [out:json];
@@ -82,7 +84,7 @@ async def _fetch_nightlife_count(
     for attempt in range(_MAX_RETRIES + 1):
         try:
             response = await client.post(
-                OVERPASS_API, data={"data": query}, timeout=30.0
+                OVERPASS_API, data={"data": query}, headers=_OVERPASS_HEADERS, timeout=30.0
             )
         except httpx.RequestError as exc:
             raise RuntimeError(
