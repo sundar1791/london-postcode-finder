@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 from typing import Optional
 
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(override=True)
 
-from config import HAIKU_MODEL, OVERPASS_USER_AGENT
+from config import HAIKU_MODEL, LONDON_POSTCODE_DISTRICTS, OVERPASS_USER_AGENT, WEB_SEARCH_MAX_TOKENS
 from tools.postcode import get_all_postcode_coordinates
 
 # overpass.kumi.systems was dropped: it is frequently down and hangs rather
@@ -28,14 +29,29 @@ _MAX_RETRIES = 3
 _RETRY_DELAYS = [10, 20, 30]
 _OVERPASS_TIMEOUT = 30.0
 _COMBINED_TIMEOUT = 45.0
+_WEB_MATCH_THRESHOLD = 0.3
 
 
-def _build_overpass_query(key: str, value: str, lat: float, lng: float) -> str:
+def _parse_tag_filter(overpass_query: str) -> Optional[str]:
+    # "amenity=place_of_worship + religion=muslim" -> ["amenity"="place_of_worship"]["religion"="muslim"]
+    parts = [p.strip() for p in re.split(r"\s*(?:\+|&|,|\band\b)\s*", overpass_query) if p.strip()]
+    filters = []
+    for part in parts:
+        if "=" not in part:
+            return None
+        key, value = (x.strip().strip('"\'') for x in part.split("=", 1))
+        if not key or not value or not re.fullmatch(r"[\w:.\- ]+", key + value):
+            return None
+        filters.append(f'["{key}"="{value}"]')
+    return "".join(filters) or None
+
+
+def _build_overpass_query(tags: str, lat: float, lng: float) -> str:
     return (
         f'[out:json][timeout:30];\n'
         f'(\n'
-        f'  node["{key}"="{value}"](around:500,{lat},{lng});\n'
-        f'  way["{key}"="{value}"](around:500,{lat},{lng});\n'
+        f'  node{tags}(around:500,{lat},{lng});\n'
+        f'  way{tags}(around:500,{lat},{lng});\n'
         f');\n'
         f'out count;\n'
     )
@@ -46,10 +62,9 @@ async def _fetch_count(
     district: str,
     lat: float,
     lng: float,
-    key: str,
-    value: str,
+    tags: str,
 ) -> dict:
-    query = _build_overpass_query(key, value, lat, lng)
+    query = _build_overpass_query(tags, lat, lng)
 
     for endpoint in _OVERPASS_ENDPOINTS:
         for attempt in range(_MAX_RETRIES + 1):
@@ -126,21 +141,24 @@ def _normalise_counts(results: list) -> dict:
     }
 
 
-def _build_combined_query(key: str, value: str, coordinates: list) -> str:
+def _build_combined_query(tags: str, coordinates: list) -> str:
     # One request, one `out count` per district — the response elements come
     # back in the same order as the districts.
     blocks = "".join(
-        f'(node["{key}"="{value}"](around:500,{c["lat"]},{c["lng"]});'
-        f'way["{key}"="{value}"](around:500,{c["lat"]},{c["lng"]}););out count;\n'
+        f'(node{tags}(around:500,{c["lat"]},{c["lng"]});'
+        f'way{tags}(around:500,{c["lat"]},{c["lng"]}););out count;\n'
         for c in coordinates
     )
     return f"[out:json][timeout:40];\n{blocks}"
 
 
 async def _fetch_all_counts_combined(
-    client: httpx.AsyncClient, coordinates: list, key: str, value: str
+    client: httpx.AsyncClient, coordinates: list, tags: str
 ) -> Optional[list]:
-    query = _build_combined_query(key, value, coordinates)
+    """Counts for every district in one request. Returns None on a transient
+    failure (worth falling back to per-district queries) and [] when Overpass
+    rejects the query itself (falling back would fail the same way, slowly)."""
+    query = _build_combined_query(tags, coordinates)
     for endpoint in _OVERPASS_ENDPOINTS:
         for attempt in range(2):
             try:
@@ -151,6 +169,9 @@ async def _fetch_all_counts_combined(
                     logging.warning("context_sub_agent: combined query HTTP %d from %s", response.status_code, endpoint)
                     await asyncio.sleep(_RETRY_DELAYS[attempt])
                     continue
+                if response.status_code == 400:
+                    logging.error("context_sub_agent: Overpass rejected the query for %s", tags)
+                    return []
                 response.raise_for_status()
                 elements = response.json().get("elements", [])
             except (httpx.HTTPError, ValueError) as exc:
@@ -170,24 +191,24 @@ async def _fetch_all_counts_combined(
 
 
 async def _run_overpass_path(spawn: dict) -> dict:
-    overpass_query: str = spawn.get("overpass_query", "")
-    if "=" not in overpass_query:
+    overpass_query: str = spawn.get("overpass_query") or ""
+    tags = _parse_tag_filter(overpass_query)
+    if not tags:
         logging.error(
-            "context_sub_agent: cannot parse overpass_query '%s' — expected key=value",
+            "context_sub_agent: cannot parse overpass_query '%s' — expected key=value[ + key=value]",
             overpass_query,
         )
         return {}
 
-    key, value = overpass_query.split("=", 1)
-    logging.info(
-        "context_sub_agent: Overpass path — tag %s=%s, radius 500m", key, value
-    )
+    logging.info("context_sub_agent: Overpass path — tags %s, radius 500m", tags)
 
     coordinates = await get_all_postcode_coordinates()
 
     raw_results: list = []
     async with httpx.AsyncClient() as client:
-        combined = await _fetch_all_counts_combined(client, coordinates, key, value)
+        combined = await _fetch_all_counts_combined(client, coordinates, tags)
+        if combined == []:
+            return {}
         if combined is not None:
             logging.info("context_sub_agent: combined Overpass query succeeded")
             return _normalise_counts(combined)
@@ -197,7 +218,7 @@ async def _run_overpass_path(spawn: dict) -> dict:
             batch_results = await asyncio.gather(
                 *[
                     _fetch_count(
-                        client, coord["outcode"], coord["lat"], coord["lng"], key, value
+                        client, coord["outcode"], coord["lat"], coord["lng"], tags
                     )
                     for coord in batch
                 ]
@@ -213,39 +234,49 @@ async def _run_overpass_path(spawn: dict) -> dict:
 
 
 async def _run_web_search_path(spawn: dict) -> dict:
-    from config import LONDON_POSTCODE_DISTRICTS
 
     intent: str = spawn.get("intent", "")
     district_list = ", ".join(LONDON_POSTCODE_DISTRICTS)
 
     prompt = (
         f"For each of these 40 London postcode districts, score from 0-1 how well it "
-        f"matches this criterion: {intent}. Districts: {district_list}. Return only a "
-        f"JSON object mapping district to score, no other text."
+        f"matches this criterion: {intent}. Districts: {district_list}. Use 0 where it is "
+        f"absent or negligible, and reserve high scores for districts clearly known for it. "
+        f"Return only a JSON object mapping district to score, no other text."
     )
 
     def _call_claude() -> dict:
         client = anthropic.Anthropic()
         response = client.messages.create(
             model=HAIKU_MODEL,
-            max_tokens=500,
-            tools=[{"type": "web_search_20250305", "name": "web_search"}],
+            max_tokens=WEB_SEARCH_MAX_TOKENS,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(
             block.text for block in response.content
             if getattr(block, "type", None) == "text"
         )
-        return json.loads(text.strip())
+        # The model often wraps the JSON in prose after searching; take the last object.
+        matches = re.findall(r"\{[^{}]*\}", text, flags=re.S)
+        if not matches:
+            raise ValueError(f"no JSON object in response: {text[:200]!r}")
+        return json.loads(matches[-1], strict=False)
 
     try:
         result = await asyncio.get_event_loop().run_in_executor(None, _call_claude)
-        logging.info("context_sub_agent: web search path complete — %d districts scored", len(result))
-        return {k: float(v) for k, v in result.items()}
+        # Scores are used as a >0 filter downstream, so weak matches count as none.
+        scores = {
+            k: (min(1.0, float(v)) if float(v) >= _WEB_MATCH_THRESHOLD else 0.0)
+            for k, v in result.items() if k in LONDON_POSTCODE_DISTRICTS
+        }
+        logging.info("context_sub_agent: web search path complete — %d districts scored", len(scores))
+        return {d: scores.get(d, 0.0) for d in LONDON_POSTCODE_DISTRICTS}
     except Exception as exc:
-        logging.error("context_sub_agent: web search path failed — %s; returning 0.5 for all", exc)
-        from config import LONDON_POSTCODE_DISTRICTS
-        return {d: 0.5 for d in LONDON_POSTCODE_DISTRICTS}
+        # An empty result means "no filter" downstream; a flat 0.5 would look like
+        # every district matched.
+        logging.error("context_sub_agent: web search path failed — %s; spawn filter will not be applied", exc)
+        return {}
 
 
 async def run_context_sub_agent(spawn: dict) -> dict:
