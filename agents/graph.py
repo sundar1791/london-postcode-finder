@@ -413,6 +413,7 @@ async def knowledge_writer_node(state: LondonSearchState) -> dict:
             "knowledge_writer_node: wrote %d learnings, query_count=%d",
             result["learnings_written"], result["query_count"],
         )
+        return {"knowledge_result": result}
     except Exception as exc:
         logging.error("knowledge_writer_node: failed to persist knowledge — %s", exc)
     return {}
@@ -477,4 +478,7 @@ async def run_pipeline(
 ) -> LondonSearchState:
     initial_state = make_initial_state(token_allocation, context_text, session_id)
     result = await pipeline.ainvoke(initial_state)
+    if (result.get("knowledge_result") or {}).get("distillation_triggered"):
+        from agents.distiller import distil
+        await asyncio.get_event_loop().run_in_executor(None, distil)
     return result

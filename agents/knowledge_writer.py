@@ -10,6 +10,8 @@ load_dotenv(override=True)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from agents.distiller import should_distil
+
 
 def _get_client():
     url = os.environ.get("SUPABASE_URL")
@@ -22,14 +24,6 @@ def _get_client():
         return create_client(url, key)
     except Exception as exc:
         raise RuntimeError(f"Could not connect to Supabase: {exc}") from exc
-
-
-def _trigger_distillation(query_count: int) -> None:
-    # TODO US-039/040: replace with the real distillation engine (Milestone 7)
-    logging.info(
-        "Distillation would trigger here at query_count=%d (Milestone 7 — not yet implemented)",
-        query_count,
-    )
 
 
 def write_knowledge(new_learnings: list, supabase=None) -> dict:
@@ -78,9 +72,11 @@ def write_knowledge(new_learnings: list, supabase=None) -> dict:
     except Exception as exc:
         raise RuntimeError(f"Could not update agent_config: {exc}") from exc
 
-    distillation_triggered = new_count > 0 and new_count % 50 == 0
+    # The distillation itself runs after the user's response is complete — see
+    # agents.graph.run_pipeline and the API's background task.
+    distillation_triggered = should_distil(new_count)
     if distillation_triggered:
-        _trigger_distillation(new_count)
+        logging.info("knowledge_writer: query_count=%d — distillation due", new_count)
 
     return {
         "learnings_written": learnings_written,

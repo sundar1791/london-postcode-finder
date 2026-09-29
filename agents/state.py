@@ -37,6 +37,9 @@ class LondonSearchState(TypedDict):
     # Knowledge writer input — Annotated for parallel writes
     new_learnings: Annotated[list, operator.add]
 
+    # Knowledge writer output: learnings_written, query_count, distillation_triggered
+    knowledge_result: dict
+
 
 def make_initial_state(
     token_allocation: dict,
@@ -63,4 +66,5 @@ def make_initial_state(
         synthesiser_instruction="",
         top_5=[],
         new_learnings=[],
+        knowledge_result={},
     )
